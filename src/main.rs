@@ -27,21 +27,23 @@ fn main() {
 /// Iterates through the filtered results and sums the total distance in meters
 fn calculate_total_distance(results: &[(DateTime<Utc>, PathBuf)]) -> f64 {
     results
-        .into_par_iter() // Process files in parallel for maximum speed
-        .map(|(_ts, path)| extract_session_distance(path).unwrap_or(0.0))
+        .into_par_iter()
+        .map(|(_ts, path)| {
+            // Pass "total_distance" as the second argument
+            extract_session_field(path, "total_distance").unwrap_or(0.0)
+        })
         .sum()
 }
-/// Iterates through the results and prints the DateTime and Distance for each
+
 fn print_activity_summaries(results: &[(DateTime<Utc>, PathBuf)]) {
     println!("{:<25} | {:<15}", "Date & Time", "Distance (mi)");
     println!("{:-<45}", "");
 
-    // We can use the same parallel extraction logic to gather distances quickly
     let summaries: Vec<(DateTime<Utc>, f64)> = results
         .into_par_iter()
         .map(|(ts, path)| {
-            let dist = extract_session_distance(path).unwrap_or(0.0);
-            (*ts, dist / 1000.0 * 0.62) // Convert meters to mi
+            let dist = extract_session_field(path, "total_distance").unwrap_or(0.0);
+            (*ts, dist / 1000.0 * 0.62)
         })
         .collect();
 
@@ -54,22 +56,25 @@ fn print_activity_summaries(results: &[(DateTime<Utc>, PathBuf)]) {
     }
 }
 
-fn extract_session_distance(path: &Path) -> Result<f64, Box<dyn std::error::Error + Send + Sync>> {
+fn extract_session_field(
+    path: &Path,
+    field_name: &str,
+) -> Result<f64, Box<dyn std::error::Error + Send + Sync>> {
     let mut file = File::open(path)?;
     let messages = fitparser::from_reader(&mut file)?;
 
     for message in messages {
-        // Look for the session message (MesgNum 18)
+        // Look specifically for the session summary message
         if message.kind() == fitparser::profile::field_types::MesgNum::Session {
-            if let Some(field) = message
-                .fields()
-                .iter()
-                .find(|f| f.name() == "total_distance")
+            if let Some(field) = message.fields().iter().find(|f| f.name() == field_name)
+            // Use the dynamic field name
             {
                 match field.value() {
                     fitparser::Value::Float32(v) => return Ok(*v as f64),
                     fitparser::Value::Float64(v) => return Ok(*v),
                     fitparser::Value::UInt32(v) => return Ok(*v as f64),
+                    fitparser::Value::UInt16(v) => return Ok(*v as f64),
+                    fitparser::Value::UInt8(v) => return Ok(*v as f64),
                     _ => continue,
                 }
             }
