@@ -18,72 +18,93 @@ fn main() {
 
     // Print the list of activities and their distances
     print_activity_summaries(&result);
-
-    // You can still calculate the grand total afterward
-    let total_meters = calculate_total_distance(&result);
-    println!("\nGrand Total: {:.2} mi", total_meters / 1000.0 * 0.62);
 }
 
-/// Iterates through the filtered results and sums the total distance in meters
-fn calculate_total_distance(results: &[(DateTime<Utc>, PathBuf)]) -> f64 {
-    results
-        .into_par_iter()
-        .map(|(_ts, path)| {
-            // Pass "total_distance" as the second argument
-            extract_session_field(path, "total_distance").unwrap_or(0.0)
-        })
-        .sum()
+struct SessionStats {
+    distance: f64,
+    calories: u16,
+    duration: f64, // total_elapsed_time in seconds
 }
 
-fn print_activity_summaries(results: &[(DateTime<Utc>, PathBuf)]) {
-    println!("{:<25} | {:<15}", "Date & Time", "Distance (mi)");
-    println!("{:-<45}", "");
-
-    let summaries: Vec<(DateTime<Utc>, f64)> = results
-        .into_par_iter()
-        .map(|(ts, path)| {
-            let dist = extract_session_field(path, "total_distance").unwrap_or(0.0);
-            (*ts, dist / 1000.0 * 0.62)
-        })
-        .collect();
-
-    // Sort by date before printing for a better user experience
-    let mut sorted_summaries = summaries;
-    sorted_summaries.sort_by_key(|(ts, _)| *ts);
-
-    for (ts, dist) in sorted_summaries {
-        println!("{:<25} | {:.2} mi", ts.to_rfc2822(), dist);
-    }
-}
-
-fn extract_session_field(
-    path: &Path,
-    field_name: &str,
-) -> Result<f64, Box<dyn std::error::Error + Send + Sync>> {
-    let mut file = File::open(path)?;
-    let messages = fitparser::from_reader(&mut file)?;
-
-    for message in messages {
-        // Look specifically for the session summary message
-        if message.kind() == fitparser::profile::field_types::MesgNum::Session {
-            if let Some(field) = message.fields().iter().find(|f| f.name() == field_name)
-            // Use the dynamic field name
-            {
-                match field.value() {
-                    fitparser::Value::Float32(v) => return Ok(*v as f64),
-                    fitparser::Value::Float64(v) => return Ok(*v),
-                    fitparser::Value::UInt32(v) => return Ok(*v as f64),
-                    fitparser::Value::UInt16(v) => return Ok(*v as f64),
-                    fitparser::Value::UInt8(v) => return Ok(*v as f64),
-                    _ => continue,
-                }
-            }
+impl Default for SessionStats {
+    fn default() -> Self {
+        Self {
+            distance: 0.0,
+            calories: 0,
+            duration: 0.0,
         }
     }
-    Ok(0.0)
 }
 
-/// Filters the DashMap for files within the inclusive range [start, end]
+// Retrieve a set of fields, sort and print them.
+fn print_activity_summaries(results: &[(DateTime<Utc>, PathBuf)]) {
+    println!(
+        "{:<25} | {:<12} | {:<10} | {:<10}",
+        "Date & Time", "Dist (mi)", "Cal", "Time (min)"
+    );
+    println!("{:-<70}", "");
+
+    let mut summaries: Vec<(DateTime<Utc>, SessionStats)> = results
+        .into_par_iter()
+        .map(|(ts, path)| (*ts, extract_session_data(path).unwrap_or_default()))
+        .collect();
+
+    summaries.sort_by_key(|(ts, _)| *ts);
+
+    for (ts, stats) in summaries {
+        println!(
+            "{:<25} | {:>9.2} mi | {:>10} | {:>10.1} min",
+            ts.to_rfc2822(),
+            stats.distance / 1000.0 * 0.62,
+            stats.calories,
+            stats.duration / 60.0
+        );
+    }
+}
+
+// Retrieve a set of fields from a set of files.
+fn extract_session_data(
+    path: &Path,
+) -> Result<SessionStats, Box<dyn std::error::Error + Send + Sync>> {
+    let mut file = File::open(path)?;
+    let messages = fitparser::from_reader(&mut file)?;
+    let mut stats = SessionStats::default();
+
+    for message in messages {
+        if message.kind() == fitparser::profile::field_types::MesgNum::Session {
+            for field in message.fields() {
+                match field.name() {
+                    "total_distance" => {
+                        stats.distance = match field.value() {
+                            fitparser::Value::Float32(v) => *v as f64,
+                            fitparser::Value::Float64(v) => *v,
+                            _ => 0.0,
+                        };
+                    }
+                    "total_calories" => {
+                        if let fitparser::Value::UInt16(v) = field.value() {
+                            stats.calories = *v;
+                        }
+                    }
+                    "total_elapsed_time" => {
+                        stats.duration = match field.value() {
+                            fitparser::Value::Float32(v) => *v as f64,
+                            fitparser::Value::Float64(v) => *v,
+                            _ => 0.0,
+                        };
+                    }
+                    _ => {}
+                }
+            }
+            // Once we find the session message, we can stop
+            return Ok(stats);
+        }
+    }
+    Ok(stats)
+}
+
+// Filters the DashMap for files within the inclusive range [start, end]
+// In other words, find a filename between a given set of datetimes.
 fn get_files_in_range(
     map: &Arc<DashMap<DateTime<Utc>, PathBuf>>,
     start: DateTime<Utc>,
@@ -98,6 +119,7 @@ fn get_files_in_range(
         .collect()
 }
 
+// Create a hash table of filename keyed off of file creation time.
 fn process_fit_directory(dir: &str) -> Arc<DashMap<DateTime<Utc>, PathBuf>> {
     // DashMap is a concurrent Split-Ordered Hash Table.
     // It is much faster than Mutex<HashMap> for high-concurrency writes.
@@ -128,6 +150,7 @@ fn process_fit_directory(dir: &str) -> Arc<DashMap<DateTime<Utc>, PathBuf>> {
     map
 }
 
+// Retrieve a file's creation timestamp quickly.
 fn extract_timestamp_fast(
     path: &Path,
 ) -> Result<DateTime<Utc>, Box<dyn std::error::Error + Send + Sync>> {
@@ -147,6 +170,7 @@ fn extract_timestamp_fast(
     }
 }
 
+// Helper function for extract_timestamp_fast.
 fn find_ts_in_vec(
     messages: &[fitparser::FitDataRecord],
 ) -> Result<DateTime<Utc>, Box<dyn std::error::Error + Send + Sync>> {
