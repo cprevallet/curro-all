@@ -33,7 +33,7 @@ fn calculate_total_distance(results: &[(DateTime<Utc>, PathBuf)]) -> f64 {
 }
 /// Iterates through the results and prints the DateTime and Distance for each
 fn print_activity_summaries(results: &[(DateTime<Utc>, PathBuf)]) {
-    println!("{:<25} | {:<15}", "Date & Time", "Distance (km)");
+    println!("{:<25} | {:<15}", "Date & Time", "Distance (mi)");
     println!("{:-<45}", "");
 
     // We can use the same parallel extraction logic to gather distances quickly
