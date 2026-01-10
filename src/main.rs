@@ -11,7 +11,7 @@ fn main() {
     let target_dir = "/home/craig/Documents/garmin/";
     let lookup = process_fit_directory(target_dir);
 
-    let start_date = Utc.with_ymd_and_hms(2025, 12, 1, 0, 0, 0).unwrap();
+    let start_date = Utc.with_ymd_and_hms(2025, 7, 1, 0, 0, 0).unwrap();
     let end_date = Utc.with_ymd_and_hms(2025, 12, 31, 23, 59, 59).unwrap();
 
     let result = get_files_in_range(&lookup, start_date, end_date);
