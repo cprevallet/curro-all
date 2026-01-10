@@ -1,0 +1,13 @@
+[package]
+name = "aggregate"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+fitparser = "0.7"
+rayon = "1.10"
+dashmap = "6.0"
+walkdir = "2.5"
+
+# Date and Time handling
+chrono = { version = "0.4", features = ["serde"] }
