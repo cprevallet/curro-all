@@ -23,7 +23,10 @@ fn main() {
 struct SessionStats {
     distance: f64,
     calories: u16,
-    duration: f64, // total_elapsed_time in seconds
+    duration: f64,
+    enhanced_speed: f64, // Max or avg speed (m/s)
+    ascent: u16,         // Total ascent (meters)
+    descent: u16,        // Total descent (meters)
 }
 
 impl Default for SessionStats {
@@ -32,33 +35,10 @@ impl Default for SessionStats {
             distance: 0.0,
             calories: 0,
             duration: 0.0,
+            enhanced_speed: 0.0,
+            ascent: 0,
+            descent: 0,
         }
-    }
-}
-
-// Retrieve a set of fields, sort and print them.
-fn print_activity_summaries(results: &[(DateTime<Utc>, PathBuf)]) {
-    println!(
-        "{:<25} | {:<12} | {:<10} | {:<10}",
-        "Date & Time", "Dist (mi)", "Cal", "Time (min)"
-    );
-    println!("{:-<70}", "");
-
-    let mut summaries: Vec<(DateTime<Utc>, SessionStats)> = results
-        .into_par_iter()
-        .map(|(ts, path)| (*ts, extract_session_data(path).unwrap_or_default()))
-        .collect();
-
-    summaries.sort_by_key(|(ts, _)| *ts);
-
-    for (ts, stats) in summaries {
-        println!(
-            "{:<25} | {:>9.2} mi | {:>10} | {:>10.1} min",
-            ts.to_rfc2822(),
-            stats.distance / 1000.0 * 0.62,
-            stats.calories,
-            stats.duration / 60.0
-        );
     }
 }
 
@@ -93,16 +73,68 @@ fn extract_session_data(
                             _ => 0.0,
                         };
                     }
+                    "enhanced_avg_speed" => {
+                        // Usually more accurate than 'avg_speed'
+                        stats.enhanced_speed = match field.value() {
+                            fitparser::Value::Float32(v) => *v as f64,
+                            fitparser::Value::Float64(v) => *v,
+                            _ => 0.0,
+                        };
+                    }
+                    "total_ascent" => {
+                        if let fitparser::Value::UInt16(v) = field.value() {
+                            stats.ascent = *v;
+                        }
+                    }
+                    "total_descent" => {
+                        if let fitparser::Value::UInt16(v) = field.value() {
+                            stats.descent = *v;
+                        }
+                    }
                     _ => {}
                 }
             }
-            // Once we find the session message, we can stop
             return Ok(stats);
         }
     }
     Ok(stats)
 }
 
+// Extract the data, sort and display.
+fn print_activity_summaries(results: &[(DateTime<Utc>, PathBuf)]) {
+    println!(
+        "{:<25} | {:<8} | {:<5} | {:<7} | {:<7} | {:<7} | {:<7}",
+        "Date & Time", "Dist(mi)", "Cal", "Time", "mph", "Asc(ft)", "Des(ft)"
+    );
+    println!("{:-<95}", "");
+
+    let mut summaries: Vec<(DateTime<Utc>, SessionStats)> = results
+        .into_par_iter()
+        .map(|(ts, path)| (*ts, extract_session_data(path).unwrap_or_default()))
+        .collect();
+
+    summaries.sort_by_key(|(ts, _)| *ts);
+
+    for (ts, stats) in summaries {
+        // Conversions
+        let miles = stats.distance / 1000.0 * 0.621371;
+        let mph = stats.enhanced_speed * 2.23694; // m/s to mph
+        let ascent_ft = stats.ascent as f64 * 3.28084;
+        let descent_ft = stats.descent as f64 * 3.28084;
+        let mins = stats.duration / 60.0;
+
+        println!(
+            "{:<25} | {:>8.2} | {:>5} | {:>6.1}m | {:>7.1} | {:>7.0} | {:>7.0}",
+            ts.to_rfc2822(),
+            miles,
+            stats.calories,
+            mins,
+            mph,
+            ascent_ft,
+            descent_ft
+        );
+    }
+}
 // Filters the DashMap for files within the inclusive range [start, end]
 // In other words, find a filename between a given set of datetimes.
 fn get_files_in_range(
