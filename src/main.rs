@@ -101,9 +101,10 @@ fn plot_session_metric(
     chart
         .configure_mesh()
         .x_labels(10)
+        // This line formats the Utc DateTime to just YYYY-MM-DD
+        .x_label_formatter(&|d| d.format("%Y-%m-%d").to_string())
         .y_desc(unit_label)
         .draw()?;
-
     // 4. Draw the Line Series
     chart
         .draw_series(LineSeries::new(
@@ -234,7 +235,7 @@ fn print_activity_summaries(results: &[(DateTime<Utc>, PathBuf)]) {
 
         println!(
             "{:<25} | {:>8.2} | {:>5} | {:>6.1}m | {:>7.1} | {:>7.0} | {:>7.0}",
-            ts.to_rfc2822(),
+            ts.format("%Y-%m-%d").to_string(),
             miles,
             stats.calories,
             mins,
