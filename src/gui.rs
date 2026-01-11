@@ -483,19 +483,8 @@ pub fn plot_session_metric(
     plotvals: Vec<(DateTime<Utc>, f64)>,
     metric_name: &str,
     unit_label: &str,
-    // value_extractor: fn(&SessionStats) -> f64,
+    color: &RGBColor,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    // 1. Prepare and sort plotvals
-    // let mut plotvals: Vec<(DateTime<Utc>, f64)> = results
-    //     .into_par_iter()
-    //     .map(|(ts, path)| {
-    //         let stats = extract_session_plotvals(path).unwrap_or_default();
-    //         (*ts, value_extractor(&stats))
-    //     })
-    //     .collect();
-
-    // plotvals.sort_by_key(|(ts, _)| *ts);
-
     if plotvals.is_empty() {
         return Ok(());
     }
@@ -506,42 +495,85 @@ pub fn plot_session_metric(
     let (start_date, end_date) = (plotvals.first().unwrap().0, plotvals.last().unwrap().0);
     let max_val = plotvals.iter().map(|(_, v)| *v).fold(0.0, f64::max) * 1.1;
 
+    let is_dark = StyleManager::default().is_dark();
+    let mut caption_style = ("sans-serif", 16, &GREY_800).into_text_style(a);
+    if is_dark {
+        caption_style = ("sans-serif", 16, &GREY_200).into_text_style(a);
+    }
+    // .caption(format!("{}", metric_name), ("sans-serif", 16))
+
     // 3. Build the chart
     let mut chart = ChartBuilder::on(&a)
-        .caption(format!("{} over Time", metric_name), ("sans-serif", 40))
+        .caption(format!("{}", metric_name), caption_style)
         .margin(20)
         .x_label_area_size(40)
         .y_label_area_size(60)
         .build_cartesian_2d(start_date..end_date, 0.0..max_val)?;
 
+    let mut axis_text_style = ("sans-serif", 10, &GREY_800).into_text_style(a);
+    if is_dark {
+        axis_text_style = ("sans-serif", 10, &GREY_200).into_text_style(a);
+    }
+    let light_line_style = ShapeStyle {
+        color: color.mix(0.05),
+        filled: false,
+        stroke_width: 1,
+    };
+    let bold_line_style = ShapeStyle {
+        color: color.mix(0.10),
+        filled: false,
+        stroke_width: 2,
+    };
+    let mut axis_style = ShapeStyle {
+        // color: color.mix(0.3),
+        color: GREY_600.mix(1.0),
+        filled: false,
+        stroke_width: 2,
+    };
+    if is_dark {
+        axis_style = ShapeStyle {
+            // color: color.mix(0.3),
+            color: GREY_400.mix(1.0),
+            filled: false,
+            stroke_width: 2,
+        };
+    }
+
     chart
         .configure_mesh()
-        .x_labels(10)
+        .x_labels(5)
+        .x_label_style(axis_text_style.clone())
+        .y_labels(5)
+        .y_label_style(axis_text_style.clone())
         .x_label_formatter(&|d| d.format("%Y-%m-%d").to_string())
         .y_desc(unit_label)
+        .light_line_style(light_line_style)
+        .bold_line_style(bold_line_style)
+        .axis_style(axis_style)
         .draw()?;
 
     // 4. Draw the Line Series
     chart
         .draw_series(LineSeries::new(
             plotvals.iter().map(|(date, val)| (*date, *val)),
-            &RED,
+            &color,
         ))?
-        .label(metric_name)
-        .legend(|(x, y)| PathElement::new(vec![(x, y), (x + 20, y)], &RED));
+        // .label(metric_name)
+        // .legend(|(x, y)| PathElement::new(vec![(x, y), (x + 20, y)], &color))
+        ;
 
     // 5. Draw Scatter Points
     chart.draw_series(
         plotvals
             .iter()
-            .map(|(date, val)| Circle::new((*date, *val), 3, RED.filled())),
+            .map(|(date, val)| Circle::new((*date, *val), 3, color.filled())),
     )?;
 
-    chart
-        .configure_series_labels()
-        .background_style(&WHITE.mix(0.8))
-        .border_style(&BLACK)
-        .draw()?;
+    // chart
+    //     .configure_series_labels()
+    //     .background_style(&WHITE.mix(0.8))
+    //     .border_style(&BLACK)
+    //     .draw()?;
 
     Ok(())
 }
@@ -561,16 +593,30 @@ fn draw_graphs(
     let root = plotters_cairo::CairoBackend::new(&cr, (width as u32, height as u32))
         .unwrap()
         .into_drawing_area();
-    root.fill(&WHITE);
+    // root.fill(&WHITE);
     let mut areas: Vec<plotters::drawing::DrawingArea<CairoBackend<'_>, plotters::coord::Shift>> =
         Vec::new();
     areas = root.split_evenly((3, 2));
 
     // Generate Distance Graph (Miles)
-    plot_session_metric(&areas[0], distance_plotvals.to_vec(), "Distance", "Miles").unwrap();
+    plot_session_metric(
+        &areas[0],
+        distance_plotvals.to_vec(),
+        "Distance",
+        "Miles",
+        &GREEN,
+    )
+    .unwrap();
 
     // Generate Calories Graph
-    plot_session_metric(&areas[1], calories_plotvals.to_vec(), "Calories", "kcal").unwrap();
+    plot_session_metric(
+        &areas[1],
+        calories_plotvals.to_vec(),
+        "Calories",
+        "kcal",
+        &BLUE,
+    )
+    .unwrap();
 
     // Generate Ascent Graph (Feet)
     plot_session_metric(
@@ -578,14 +624,29 @@ fn draw_graphs(
         ascent_plotvals.to_vec(),
         "Elevation Gain",
         "Feet",
+        &CYAN,
     )
     .unwrap();
 
     // Generate Duration Graph (Minutes)
-    plot_session_metric(&areas[3], duration_plotvals.to_vec(), "Duration", "Minutes").unwrap();
+    plot_session_metric(
+        &areas[3],
+        duration_plotvals.to_vec(),
+        "Duration",
+        "Minutes",
+        &RED,
+    )
+    .unwrap();
 
     // Generate Average Speed Graph (MPH)
-    plot_session_metric(&areas[4], speed_plotvals.to_vec(), "Average Speed", "MPH").unwrap();
+    plot_session_metric(
+        &areas[4],
+        speed_plotvals.to_vec(),
+        "Average Speed",
+        "MPH",
+        &BROWN,
+    )
+    .unwrap();
 
     // Generate Descent Graph (Feet)
     plot_session_metric(
@@ -593,6 +654,7 @@ fn draw_graphs(
         descent_plotvals.to_vec(),
         "Elevation Loss",
         "Feet",
+        &YELLOW,
     )
     .unwrap();
 
