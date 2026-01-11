@@ -1,3 +1,31 @@
+// User interface logic - setup, drawing, formatting.
+
+use crate::config::{ICON_NAME, PROGRAM_NAME, SETTINGSFILE, Units, load_config};
+// use crate::data::{
+//     GraphAttributes, GraphCache, MapCache, cvt_altitude, cvt_distance, cvt_elapsed_time, cvt_pace,
+//     cvt_temperature, get_run_start_date, get_sess_record_field, get_time_in_zone_field,
+//     get_timestamps, get_xy, is_american_thanksgiving, is_easter, semi_to_degrees, set_plot_range,
+// };
+use crate::i18n::tr;
+use directories::BaseDirs;
+use fitparser::{FitDataField, FitDataRecord, profile::field_types::MesgNum};
+use gtk4::cairo::Context;
+use gtk4::ffi::GTK_STYLE_PROVIDER_PRIORITY_APPLICATION;
+use gtk4::glib::clone;
+use gtk4::prelude::*;
+use gtk4::{
+    Adjustment, Button, DrawingArea, DropDown, Frame, HeaderBar, Image, Label, MenuButton,
+    Orientation, Overlay, Popover, Scale, ScrolledWindow, StringList, StringObject, TextBuffer,
+    TextView, gdk,
+};
+use libadwaita::prelude::*;
+use libadwaita::{Application, ApplicationWindow, StyleManager, WindowTitle};
+use plotters::prelude::*;
+use plotters::style::full_palette::{BROWN, CYAN, GREY_200, GREY_400, GREY_600, GREY_800};
+use plotters_cairo::CairoBackend;
+use std::path::Path;
+use std::rc::Rc;
+
 use chrono::{DateTime, Utc};
 use plotters::prelude::*;
 use rayon::prelude::*;
@@ -5,6 +33,432 @@ use std::path::PathBuf;
 
 // Import types from our data module
 use crate::data::{SessionStats, extract_session_data};
+
+// #####################################################################
+// ##################### OVERALL UI FUNCTIONS ##########################
+// #####################################################################
+//
+// Create arrow controls for the graph y-axis zoom.
+fn create_arrow_controls(adjustment: &Adjustment) -> gtk4::Box {
+    // 1. Create the container
+    let container = gtk4::Box::builder()
+        .orientation(Orientation::Vertical)
+        .width_request(30)
+        .margin_top(5)
+        .margin_bottom(5)
+        .margin_start(5)
+        .margin_end(5)
+        .css_name("arrow-controls")
+        .build();
+
+    // 2. Create the Up button
+    let up_button = Button::from_icon_name("list-add-symbolic");
+    up_button.set_width_request(10);
+    let adj_clone = adjustment.clone();
+    up_button.connect_clicked(move |_| {
+        let new_val = (adj_clone.value() + adj_clone.step_increment()).min(adj_clone.upper());
+        adj_clone.set_value(new_val);
+    });
+
+    // 3. Create the Down button
+    let down_button = Button::from_icon_name("list-remove-symbolic");
+    down_button.set_width_request(10);
+    let adj_clone = adjustment.clone();
+    down_button.connect_clicked(move |_| {
+        let new_val = (adj_clone.value() - adj_clone.step_increment()).max(adj_clone.lower());
+        adj_clone.set_value(new_val);
+    });
+
+    let provider = gtk4::CssProvider::new();
+    provider.load_from_data(
+        "
+    .arrow-controls {
+        opacity: 0.1; /* Almost hidden by default */
+        transition: opacity 0.5s ease-in-out; /* Smooth fade animation */
+        background-color: rgba(0, 0, 0, 0.4);
+        border-radius: 8px;
+        padding: 4px;
+    }
+
+    /* This class will be toggled by Rust code on hover */
+    .arrow-controls.visible {
+        opacity: 1.0;
+    }
+
+    .arrow-controls button {
+        background: transparent;
+        color: white;
+        border: none;
+    }
+",
+    );
+    // 4. Assemble
+    container.append(&up_button);
+    container.append(&down_button);
+
+    container
+}
+
+// Widgets used for the graphical user interface.
+pub struct UserInterface {
+    pub settings_file: String,
+    pub win: ApplicationWindow,
+    pub header_bar: HeaderBar,
+    pub menu_button: gtk4::MenuButton,
+    pub popover: gtk4::Popover,
+    pub menu_box: gtk4::Box,
+    pub outer_box: gtk4::Box,
+    pub button_box: gtk4::Box,
+    pub main_pane: gtk4::Paned,
+    pub btn: Button,
+    pub text_view: TextView,
+    pub text_buffer: TextBuffer,
+    pub frame_left: Frame,
+    pub frame_right: Frame,
+    pub left_frame_pane: gtk4::Paned,
+    pub right_frame_pane: gtk4::Paned,
+    pub scrolled_window: ScrolledWindow,
+    pub da_window: ScrolledWindow,
+    pub y_zoom_adj: Adjustment,
+    pub x_zoom_adj: Adjustment,
+    pub y_zoom_box: gtk4::Box,
+    pub curr_time_label: Label,
+    pub controls_box: gtk4::Box,
+    pub uom: StringList,
+    pub units_widget: DropDown,
+    pub about_label: String,
+    pub about_btn: Button,
+    pub da: DrawingArea,
+    pub overlay: Overlay,
+}
+
+// Instantiate the object holding the widgets (views).
+pub fn instantiate_ui(app: &Application) -> UserInterface {
+    let mut ui = UserInterface {
+        settings_file: String::from(SETTINGSFILE),
+        win: ApplicationWindow::builder()
+            .application(app)
+            .title(PROGRAM_NAME)
+            .build(),
+        header_bar: HeaderBar::builder()
+            .title_widget(&WindowTitle::new(PROGRAM_NAME, ""))
+            .build(),
+        menu_button: MenuButton::builder()
+            .icon_name("open-menu-symbolic")
+            .build(),
+        popover: Popover::builder().build(),
+        menu_box: gtk4::Box::builder()
+            .orientation(Orientation::Vertical)
+            .spacing(10)
+            .margin_start(10)
+            .margin_end(10)
+            .margin_bottom(10)
+            .margin_top(10)
+            .build(),
+        // Main horizontal container to hold the two frames side-by-side,
+        // outer box wraps main_pane.
+        outer_box: gtk4::Box::builder()
+            .orientation(Orientation::Vertical)
+            .spacing(10)
+            .build(),
+        button_box: gtk4::Box::builder()
+            .orientation(Orientation::Horizontal)
+            .vexpand(false)
+            .hexpand(false)
+            .width_request(200)
+            .height_request(20)
+            .spacing(10)
+            .build(),
+        main_pane: gtk4::Paned::builder().build(),
+        btn: Button::builder()
+            .margin_top(5)
+            .margin_bottom(5)
+            .margin_start(5)
+            .margin_end(5)
+            .height_request(30)
+            .width_request(50)
+            .build(),
+        text_view: TextView::builder()
+            .monospace(true)
+            .editable(false)
+            .left_margin(25)
+            .right_margin(25)
+            .build(),
+        text_buffer: TextBuffer::builder().build(),
+        frame_left: Frame::builder().margin_bottom(5).build(),
+        frame_right: Frame::builder().build(),
+        left_frame_pane: gtk4::Paned::builder()
+            .orientation(Orientation::Vertical)
+            .margin_end(5)
+            .shrink_start_child(true)
+            .shrink_end_child(true)
+            .resize_start_child(true)
+            .resize_end_child(true)
+            .build(),
+        right_frame_pane: gtk4::Paned::builder()
+            .orientation(Orientation::Horizontal)
+            .margin_start(5)
+            .shrink_start_child(true)
+            .shrink_end_child(false)
+            .resize_start_child(true)
+            .resize_end_child(false)
+            .build(),
+        scrolled_window: ScrolledWindow::builder().margin_top(5).build(),
+        da_window: ScrolledWindow::builder()
+            .vexpand(true)
+            .hexpand(true)
+            .build(),
+        x_zoom_adj: Adjustment::builder()
+            .lower(0.5)
+            .upper(2.0)
+            .step_increment(0.1)
+            .page_increment(0.1)
+            .value(1.0)
+            .build(),
+        y_zoom_adj: Adjustment::builder()
+            .lower(0.5)
+            .upper(4.0)
+            .step_increment(0.1)
+            .page_increment(0.1)
+            .value(1.0)
+            .build(),
+        y_zoom_box: gtk4::Box::builder().build(),
+        curr_time_label: Label::new(Some("")),
+        controls_box: gtk4::Box::builder()
+            .orientation(Orientation::Horizontal)
+            .width_request(500)
+            .spacing(10)
+            .build(),
+        uom: StringList::new(&[&tr("UNITS_METRIC", None), &tr("UNITS_US", None)]),
+        units_widget: DropDown::builder()
+            .margin_top(5)
+            .margin_bottom(5)
+            .margin_start(5)
+            .margin_end(5)
+            .height_request(30)
+            .width_request(100)
+            .build(),
+        about_label: tr("ABOUT_BUTTON_LABEL", None),
+        about_btn: Button::builder()
+            .margin_top(5)
+            .margin_bottom(5)
+            .margin_start(5)
+            .margin_end(5)
+            .height_request(30)
+            .width_request(50)
+            .build(),
+        da: DrawingArea::builder()
+            .width_request(400)
+            .margin_end(40)
+            .build(),
+        overlay: Overlay::builder().build(),
+    };
+    let provider = gtk4::CssProvider::new();
+    let css_data = "textview { font: 14px monospace; font-weight: 500;}";
+    provider.load_from_data(css_data);
+    gtk4::style_context_add_provider_for_display(
+        &gdk::Display::default().expect("Could not get default display."),
+        &provider,
+        GTK_STYLE_PROVIDER_PRIORITY_APPLICATION.try_into().unwrap(),
+    );
+    ui.about_btn.set_label(&ui.about_label);
+    ui.units_widget.set_model(Some(&ui.uom));
+    ui.text_view.set_buffer(Some(&ui.text_buffer));
+    ui.text_view
+        .set_tooltip_text(Some(&tr("TOOLTIP_TEXT_VIEW", None)));
+    ui.scrolled_window.set_child(Some(&ui.text_view));
+    ui.about_btn
+        .set_tooltip_text(Some(&tr("TOOLTIP_ABOUT_BUTTON", None)));
+    ui.menu_box.append(&ui.units_widget);
+    ui.menu_box.append(&ui.about_btn);
+    ui.popover.set_autohide(true); // Ensures clicking outside or on the button closes it
+    ui.popover.set_cascade_popdown(true); // Closes nested popovers if any
+    ui.popover.set_child(Some(&ui.menu_box));
+    ui.menu_button.set_popover(Some(&ui.popover));
+    ui.header_bar.pack_end(&ui.menu_button);
+    ui.outer_box.append(&ui.header_bar);
+    // Button with icon and label.
+    let button_content = gtk4::Box::new(Orientation::Horizontal, 6);
+    button_content.set_halign(gtk4::Align::Center);
+    // "document-open" is a standard Freedesktop icon name.
+    let icon = Image::from_icon_name("document-open");
+    let label = Label::new(Some(&tr("OPEN_FILE_BUTTON_LABEL", None)));
+    button_content.append(&icon);
+    button_content.append(&label);
+    ui.btn.set_child(Some(&button_content));
+    ui.btn
+        .set_tooltip_text(Some(&tr("TOOLTIP_OPEN_BUTTON", None)));
+
+    ui.units_widget
+        .set_tooltip_text(Some(&tr("TOOLTIP_UNITS_DROPDOWN", None)));
+    ui.win.set_icon_name(Some(ICON_NAME));
+    ui.win.set_content(Some(&ui.outer_box));
+    ui.button_box.append(&ui.btn);
+    ui.button_box.append(&ui.controls_box);
+    ui.y_zoom_box = create_arrow_controls(&ui.y_zoom_adj);
+    ui.y_zoom_box
+        .set_tooltip_text(Some(&tr("TOOLTIP_ZOOM_SCALE", None)));
+    ui.outer_box.append(&ui.button_box);
+    ui.outer_box.append(&ui.main_pane);
+    ui.controls_box.append(&ui.curr_time_label);
+
+    ui.frame_left
+        .set_tooltip_text(Some(&tr("TOOLTIP_MAP_FRAME", None)));
+    ui.frame_right
+        .set_tooltip_text(Some(&tr("TOOLTIP_GRAPH_FRAME", None)));
+    // query paths of user-invisible standard directories.
+    let base_dirs = BaseDirs::new();
+    if base_dirs.is_some() {
+        ui.settings_file = base_dirs
+            .unwrap()
+            .config_dir()
+            .join(SETTINGSFILE)
+            .to_string_lossy()
+            .to_string();
+    }
+    set_up_user_defaults(&ui);
+    return ui;
+}
+// After reading the fit file, display the additional views of the UI.
+pub fn construct_views_from_data(
+    ui: &UserInterface,
+    data: &Vec<(chrono::DateTime<chrono::Utc>, PathBuf)>,
+) {
+    // 1. Instantiate embedded widgets based on parsed fit data.
+    update_map_graph_and_summary_widgets(&ui, &data);
+
+    ui.y_zoom_box.set_halign(gtk4::Align::End);
+    ui.overlay.add_overlay(&ui.y_zoom_box); // The top layer
+    ui.overlay.set_child(Some(&ui.da));
+
+    // 2. Connect embedded widgets to their parents.
+    ui.da_window.set_child(Some(&ui.overlay));
+    ui.frame_right.set_child(Some(&ui.da_window));
+    // ui.frame_left.set_child(Some(&ui.logo_overlay));
+    // 3. Configure the widget layout.
+    ui.left_frame_pane.set_start_child(Some(&ui.frame_left));
+    ui.left_frame_pane.set_end_child(Some(&ui.scrolled_window));
+    ui.right_frame_pane.set_start_child(Some(&ui.frame_right));
+    // Main box contains all of the above plus the graphs.
+    ui.main_pane.set_start_child(Some(&ui.left_frame_pane));
+    ui.main_pane.set_end_child(Some(&ui.right_frame_pane));
+
+    // 4. Size the widgets.
+    ui.scrolled_window.set_size_request(500, 300);
+}
+
+// Connect up the interactive widget handlers.
+pub fn connect_interactive_widgets(
+    ui: &Rc<UserInterface>,
+    data: &Vec<(chrono::DateTime<chrono::Utc>, PathBuf)>,
+) {
+    // // clone the Rc pointer for each independent closure that needs the data.
+    // let mc_rc_for_units = Rc::clone(&mc_rc);
+    // // Hook-up the units_widget change handler.
+    // // update everything when the unit system changes.
+    // ui.units_widget.connect_selected_notify(clone!(
+    //     #[strong]
+    //     data,
+    //     #[strong]
+    //     ui,
+    //     move |_| {
+    //         // Create a new graph cache due to unit change.
+    //         let graph_cache_units = instantiate_graph_cache(&data, &ui);
+    //         // Wrap the GraphCache in an Rc for shared ownership.
+    //         let gc_rc_for_units = Rc::new(graph_cache_units);
+    //         update_map_graph_and_summary_widgets(&ui, &data, &mc_rc_for_units, &gc_rc_for_units);
+    //         let curr_pos = ui.curr_pos_adj.clone();
+    //         // ui.map.queue_draw();
+    //         ui.da.queue_draw();
+    //     },
+    // ));
+
+    // // update the tiles when the map provider changes.
+    // let mc_rc_for_tile = Rc::clone(&mc_rc);
+    // // Hook-up the tile_widget change handler.
+    // // update everything when the unit system changes.
+    // ui.tile_source_widget.connect_selected_notify(clone!(
+    //     #[strong]
+    //     data,
+    //     #[strong]
+    //     ui,
+    //     move |_| {
+    //         let curr_pos = ui.curr_pos_adj.clone();
+    //         ui.da.queue_draw();
+    //     },
+    // ));
+
+    // // Hook-up the zoom scale change handler.
+    // // redraw the graphs when the zoom changes.
+    // ui.y_zoom_adj.connect_value_changed(clone!(
+    //     #[strong]
+    //     data,
+    //     #[strong]
+    //     ui,
+    //     move |_| {
+    //         // Create a new graph cache due to zoom.
+    //         let graph_cache_zoom = instantiate_graph_cache(&data, &ui);
+    //         // Wrap the GraphCache in an Rc for shared ownership.
+    //         let gc_rc_for_zoom = Rc::new(graph_cache_zoom);
+    //         build_graphs(&data, &ui, &gc_rc_for_zoom);
+    //         ui.da.queue_draw();
+    //     },
+    // ));
+
+    // // Hook-up the current position change handler.
+    // // redraw the graphs and map when the current position changes.
+    // // clone the Rc pointer for each independent closure that needs the data.
+    // let mc_rc_for_marker = Rc::clone(&mc_rc);
+    // let gc_rc_for_scale = Rc::clone(&gc_rc);
+    // let curr_pos = ui.curr_pos_adj.clone();
+    // ui.curr_pos_scale.adjustment().connect_value_changed(clone!(
+    //     #[strong]
+    //     data,
+    //     #[strong]
+    //     ui,
+    //     #[strong]
+    //     curr_pos,
+    //     move |_| {
+    //         // Update timestamp
+    //         // Update graphs.
+    //         ui.da.queue_draw();
+    //     },
+    // ));
+}
+
+// Return a unit enumeration from a units widget.
+pub fn get_unit_system(units_widget: &DropDown) -> Units {
+    if units_widget.model().is_some() {
+        let model = units_widget.model().unwrap();
+        if let Some(item_obj) = model.item(units_widget.selected()) {
+            if let Ok(string_obj) = item_obj.downcast::<StringObject>() {
+                let unit_string = String::from(string_obj.string());
+                if unit_string == tr("UNITS_METRIC", None) {
+                    return Units::Metric;
+                }
+                if unit_string == tr("UNITS_US", None) {
+                    return Units::US;
+                }
+            }
+        }
+    }
+    return Units::None;
+}
+
+// Load the application settings from a configuration file.
+pub fn set_up_user_defaults(ui: &UserInterface) {
+    let config = load_config(&Path::new(&ui.settings_file));
+    ui.win.set_default_size(config.width, config.height);
+    ui.main_pane.set_position(config.main_split);
+    ui.right_frame_pane.set_position(config.right_frame_split);
+    ui.left_frame_pane.set_position(config.left_frame_split);
+    ui.units_widget.set_selected(config.units_index);
+}
+
+// #####################################################################
+// ##################### GRAPH FUNCTIONS ###############################
+// #####################################################################
+//
 
 /// Extract the data, sort and display in the terminal.
 pub fn print_activity_summaries(results: &[(DateTime<Utc>, PathBuf)]) {
@@ -44,9 +498,9 @@ pub fn print_activity_summaries(results: &[(DateTime<Utc>, PathBuf)]) {
 
 /// Generates a LineSeries chart for a specific metric.
 pub fn plot_session_metric(
+    a: &plotters::drawing::DrawingArea<CairoBackend<'_>, plotters::coord::Shift>,
     results: &[(DateTime<Utc>, PathBuf)],
     metric_name: &str,
-    file_name: &str,
     unit_label: &str,
     value_extractor: fn(&SessionStats) -> f64,
 ) -> Result<(), Box<dyn std::error::Error>> {
@@ -66,14 +520,13 @@ pub fn plot_session_metric(
     }
 
     // 2. Set up the drawing area
-    let root = BitMapBackend::new(file_name, (1024, 768)).into_drawing_area();
-    root.fill(&WHITE)?;
+    // let root = BitMapBackend::new(file_name, (1024, 768)).into_drawing_area();
 
     let (start_date, end_date) = (data.first().unwrap().0, data.last().unwrap().0);
     let max_val = data.iter().map(|(_, v)| *v).fold(0.0, f64::max) * 1.1;
 
     // 3. Build the chart
-    let mut chart = ChartBuilder::on(&root)
+    let mut chart = ChartBuilder::on(&a)
         .caption(format!("{} over Time", metric_name), ("sans-serif", 40))
         .margin(20)
         .x_label_area_size(40)
@@ -108,7 +561,576 @@ pub fn plot_session_metric(
         .border_style(&BLACK)
         .draw()?;
 
-    root.present()?;
-    println!("Chart saved to {}", file_name);
     Ok(())
+}
+// Use plotters.rs to draw a graph on the drawing area.
+fn draw_graphs(
+    data: &Vec<(chrono::DateTime<chrono::Utc>, PathBuf)>,
+    cr: &Context,
+    width: f64,
+    height: f64,
+) {
+    let root = plotters_cairo::CairoBackend::new(&cr, (width as u32, height as u32))
+        .unwrap()
+        .into_drawing_area();
+    root.fill(&WHITE);
+    let mut areas: Vec<plotters::drawing::DrawingArea<CairoBackend<'_>, plotters::coord::Shift>> =
+        Vec::new();
+    areas = root.split_evenly((3, 2));
+
+    // Generate Distance Graph (Miles)
+    plot_session_metric(&areas[0], &data, "Distance", "Miles", |s| {
+        s.distance / 1000.0 * 0.621371
+    })
+    .unwrap();
+
+    // Generate Calories Graph
+    plot_session_metric(&areas[1], &data, "Calories", "kcal", |s| s.calories as f64).unwrap();
+
+    // Generate Ascent Graph (Feet)
+    plot_session_metric(&areas[2], &data, "Elevation Gain", "Feet", |s| {
+        s.ascent as f64 * 3.28084
+    })
+    .unwrap();
+
+    // Generate Duration Graph (Minutes)
+    plot_session_metric(&areas[3], &data, "Duration", "Minutes", |s| {
+        s.duration / 60.0
+    })
+    .unwrap();
+
+    // Generate Average Speed Graph (MPH)
+    plot_session_metric(&areas[4], &data, "Average Speed", "MPH", |s| {
+        s.enhanced_speed * 2.23694 // m/s to mph
+    })
+    .unwrap();
+
+    // Generate Descent Graph (Feet)
+    plot_session_metric(&areas[5], &data, "Elevation Loss", "Feet", |s| {
+        s.descent as f64 * 3.28084
+    })
+    .unwrap();
+
+    let _ = root.present();
+    // --- 🎨 Custom Drawing Logic Starts Here ---
+    // let gc = &**gc_rc;
+    // let root = plotters_cairo::CairoBackend::new(&cr, (width as u32, height as u32))
+    //     .unwrap()
+    //     .into_drawing_area();
+    // // Plot only the cache values with data in them.
+    // let gc2 = Rc::clone(&gc_rc);
+    // let mut graphs_with_data: Vec<&GraphAttributes> = Vec::new();
+    // if gc.distance_pace.plotvals.len() != 0 {
+    //     graphs_with_data.push(&gc2.distance_pace);
+    // };
+    // if gc.distance_heart_rate.plotvals.len() != 0 {
+    //     graphs_with_data.push(&gc2.distance_heart_rate);
+    // };
+    // if gc.distance_cadence.plotvals.len() != 0 {
+    //     graphs_with_data.push(&gc2.distance_cadence);
+    // };
+    // if gc.distance_elevation.plotvals.len() != 0 {
+    //     graphs_with_data.push(&gc2.distance_elevation);
+    // };
+    // if gc.distance_temperature.plotvals.len() != 0 {
+    //     graphs_with_data.push(&gc2.distance_temperature);
+    // };
+    // let mut areas: Vec<plotters::drawing::DrawingArea<CairoBackend<'_>, plotters::coord::Shift>> =
+    //     Vec::new();
+    // if graphs_with_data.len() == 1 {
+    //     areas.push(root.clone());
+    // }
+    // if graphs_with_data.len() == 2 {
+    //     areas = root.split_evenly((1, 2));
+    // }
+    // if graphs_with_data.len() == 3 {
+    //     areas = root.split_evenly((3, 1));
+    // }
+    // if graphs_with_data.len() == 4 {
+    //     areas = root.split_evenly((2, 2));
+    // }
+    // if graphs_with_data.len() == 5 || graphs_with_data.len() == 6 {
+    //     areas = root.split_evenly((3, 2));
+    // }
+    // let mut graph_colors: Vec<RGBColor> = Vec::new();
+    // graph_colors.push(GREEN);
+    // graph_colors.push(BLUE);
+    // graph_colors.push(CYAN);
+    // graph_colors.push(RED);
+    // graph_colors.push(BROWN);
+    // graph_colors.push(YELLOW);
+    // // Declare and initialize.
+    // for (a, idx) in areas.iter().zip(1..) {
+    //     if (idx - 1) < graphs_with_data.len() {
+    //         build_individual_graph(
+    //             &graphs_with_data[idx - 1].plotvals,
+    //             graphs_with_data[idx - 1].caption.as_str(),
+    //             graphs_with_data[idx - 1].xlabel.as_str(),
+    //             graphs_with_data[idx - 1].ylabel.as_str(),
+    //             &graphs_with_data[idx - 1].plot_range,
+    //             &graphs_with_data[idx - 1].y_formatter,
+    //             &graph_colors[idx - 1],
+    //             curr_adj,
+    //             a,
+    //         );
+    //     }
+    // }
+
+    let _ = root.present();
+    // --- Custom Drawing Logic Ends Here ---
+}
+
+// Use plotters to actually draw a graph.
+// fn build_individual_graph(
+//     plotvals: &Vec<(f32, f32)>,
+//     caption: &str,
+//     xlabel: &str,
+//     ylabel: &str,
+//     plot_range: &(std::ops::Range<f32>, std::ops::Range<f32>),
+//     y_formatter: &Box<dyn Fn(&f32) -> String>,
+//     color: &RGBColor,
+//     curr_adj: &Adjustment,
+//     a: &plotters::drawing::DrawingArea<CairoBackend<'_>, plotters::coord::Shift>,
+// ) {
+//     let is_dark = StyleManager::default().is_dark();
+//     let mut caption_style = ("sans-serif", 16, &GREY_800).into_text_style(a);
+//     if is_dark {
+//         caption_style = ("sans-serif", 16, &GREY_200).into_text_style(a);
+//     }
+//     let mut chart = ChartBuilder::on(&a)
+//         // Set the caption of the chart
+//         .caption(caption, caption_style)
+//         // Set the size of the label region
+//         .x_label_area_size(40)
+//         .y_label_area_size(60)
+//         .margin(10)
+//         // Finally attach a coordinate on the drawing area and make a chart context
+//         .build_cartesian_2d(plot_range.clone().0, plot_range.clone().1)
+//         .unwrap();
+//     let mut axis_text_style = ("sans-serif", 10, &GREY_800).into_text_style(a);
+//     if is_dark {
+//         axis_text_style = ("sans-serif", 10, &GREY_200).into_text_style(a);
+//     }
+//     let light_line_style = ShapeStyle {
+//         color: color.mix(0.05),
+//         filled: false,
+//         stroke_width: 1,
+//     };
+//     let bold_line_style = ShapeStyle {
+//         color: color.mix(0.10),
+//         filled: false,
+//         stroke_width: 2,
+//     };
+//     let mut axis_style = ShapeStyle {
+//         // color: color.mix(0.3),
+//         color: GREY_600.mix(1.0),
+//         filled: false,
+//         stroke_width: 2,
+//     };
+//     if is_dark {
+//         axis_style = ShapeStyle {
+//             // color: color.mix(0.3),
+//             color: GREY_400.mix(1.0),
+//             filled: false,
+//             stroke_width: 2,
+//         };
+//     }
+
+//     let _ = chart
+//         .configure_mesh()
+//         // We can customize the maximum number of labels allowed for each axis
+//         .x_labels(5)
+//         .x_label_style(axis_text_style.clone())
+//         .y_labels(5)
+//         .y_label_style(axis_text_style.clone())
+//         .x_desc(xlabel)
+//         .y_desc(ylabel)
+//         .y_label_formatter(&y_formatter)
+//         .light_line_style(light_line_style)
+//         .bold_line_style(bold_line_style)
+//         .axis_style(axis_style)
+//         .draw();
+//     // // And we can draw something in the drawing area
+//     // We need to clone plotvals each time we make a call to LineSeries and PointSeries
+//     let _ = chart.draw_series(
+//         AreaSeries::new(plotvals.clone(), 0.0, color.mix(0.4)).border_style(color.mix(0.8)),
+//     );
+//     // Calculate the hairline.
+//     let idx = (curr_adj.value() * (plotvals.len() as f64 - 1.0)).trunc() as usize;
+//     if idx > 0 && idx < plotvals.len() - 1 {
+//         let hair_x = plotvals[idx].0;
+//         let hair_y = plotvals[idx].1;
+//         let mylabel = format!(
+//             "{:<1}: {:<5.2}{:<1}: {:>1}",
+//             xlabel,
+//             hair_x,
+//             ylabel,
+//             &y_formatter(&hair_y)
+//         )
+//         .to_string();
+//         let hair_y_min = plot_range.clone().0.start;
+//         let hair_y_max = plot_range.clone().1.end;
+//         let mut hairlinevals: Vec<(f32, f32)> = Vec::new();
+//         hairlinevals.push((hair_x, hair_y_min));
+//         hairlinevals.push((hair_x, hair_y_max));
+//         let _ = chart
+//             .draw_series(DashedLineSeries::new(
+//                 hairlinevals,
+//                 1,
+//                 4,
+//                 ShapeStyle {
+//                     color: GREY_600.mix(1.0),
+//                     filled: false,
+//                     stroke_width: 2,
+//                 },
+//             ))
+//             .unwrap()
+//             .label(mylabel);
+
+//         let mut label_text_style = ("sans-serif", 10, &GREY_600).into_text_style(a);
+//         if is_dark {
+//             label_text_style = ("sans-serif", 10, &GREY_400).into_text_style(a);
+//         }
+//         chart
+//             .configure_series_labels()
+//             .position(SeriesLabelPosition::UpperLeft)
+//             .margin(5)
+//             .legend_area_size(0)
+//             .label_font(label_text_style)
+//             .draw()
+//             .unwrap();
+//     }
+// }
+// Build the graphs.  Prepare the graphical data for the drawing area and
+// set-up the draw function callback.
+fn build_graphs(data: &Vec<(chrono::DateTime<chrono::Utc>, PathBuf)>, ui: &UserInterface) {
+    // Need to clone to use inside the closure.
+    let data_clone = data.clone();
+    ui.da
+        .set_draw_func(clone!(move |_drawing_area, cr, width, height| {
+            draw_graphs(&data_clone, cr, width as f64, height as f64);
+        }));
+}
+
+// Update the views when supplied with data.
+fn update_map_graph_and_summary_widgets(
+    ui: &UserInterface,
+    data: &Vec<(chrono::DateTime<chrono::Utc>, PathBuf)>,
+) {
+    build_graphs(&data, &ui);
+    build_summary(&data, &ui);
+    return;
+}
+
+// #####################################################################
+// ##################### SUMMARY FUNCTIONS #############################
+// #####################################################################
+// Return a language specific string for the field name identifier.
+// fn pretty_field(fld: &FitDataField) -> String {
+//     match fld.name() {
+//         "start_position_lat" => return tr("PRETTY_START_POSITION_LAT", None),
+//         "start_position_long" => return tr("PRETTY_START_POSITION_LONG", None),
+//         "end_position_lat" => return tr("PRETTY_END_POSITION_LAT", None),
+//         "end_position_long" => return tr("PRETTY_END_POSITION_LONG", None),
+//         "total_strides" => return tr("PRETTY_TOTAL_STRIDES", None),
+//         "total_calories" => return tr("PRETTY_TOTAL_CALORIES", None),
+//         "avg_heart_rate" => return tr("PRETTY_AVG_HEART_RATE", None),
+//         "max_heart_rate" => return tr("PRETTY_MAX_HEART_RATE", None),
+//         "avg_running_cadence" => return tr("PRETTY_AVG_RUNNING_CADENCE", None),
+//         "max_running_cadence" => return tr("PRETTY_MAX_RUNNING_CADENCE", None),
+//         "total_training_effect" => return tr("PRETTY_TOTAL_TRAINING_EFFECT", None),
+//         "first_lap_index" => return tr("PRETTY_FIRST_LAP_INDEX", None),
+//         "num_laps" => return tr("PRETTY_NUM_LAPS", None),
+//         "avg_fractional_cadence" => return tr("PRETTY_AVG_FRACTIONAL_CADENCE", None),
+//         "max_fractional_cadence" => return tr("PRETTY_MAX_FRACTIONAL_CADENCE", None),
+//         "total_anaerobic_training_effect" => {
+//             return tr("PRETTY_TOTAL_ANAEROBIC_TRAINING_EFFECT", None);
+//         }
+//         "sport" => return tr("PRETTY_SPORT", None),
+//         "sub_sport" => return tr("PRETTY_SUB_SPORT", None),
+//         "timestamp" => return tr("PRETTY_TIMESTAMP", None),
+//         "start_time" => return tr("PRETTY_START_TIME", None),
+//         "total_ascent" => return tr("PRETTY_TOTAL_ASCENT", None),
+//         "total_descent" => return tr("PRETTY_TOTAL_DESCENT", None),
+//         "total_distance" => return tr("PRETTY_TOTAL_DISTANCE", None),
+//         "total_elapsed_time" => return tr("PRETTY_TOTAL_ELAPSED_TIME", None),
+//         "total_timer_time" => return tr("PRETTY_TOTAL_TIMER_TIME", None),
+//         "enhanced_avg_speed" => return tr("PRETTY_ENHANCED_AVG_SPEED", None),
+//         "enhanced_max_speed" => return tr("PRETTY_ENHANCED_MAX_SPEED", None),
+//         "min_temperature" => return tr("PRETTY_MIN_TEMPERATURE", None),
+//         "max_temperature" => return tr("PRETTY_MAX_TEMPERATURE", None),
+//         "avg_temperature" => return tr("PRETTY_AVG_TEMPERATURE", None),
+//         _ => return "".to_string(),
+//     }
+// }
+
+// // Convert a value to user-defined units and return a formatted string when supplied a field and units.
+// fn format_string_for_field(fld: &FitDataField, user_unit: &Units) -> Option<String> {
+//     match fld.name() {
+//         "start_position_lat" | "start_position_long" | "end_position_lat" | "end_position_long" => {
+//             let result: Result<i64, _> = fld.value().try_into();
+//             match result {
+//                 Ok(semi) => {
+//                     let degrees = semi_to_degrees(semi as f32);
+//                     return Some(format!("{:<30}: {degrees:<6.3}°\n", pretty_field(fld)));
+//                 }
+//                 Err(_) => return None,
+//             }
+//         }
+
+//         "total_strides"
+//         | "total_calories"
+//         | "avg_heart_rate"
+//         | "max_heart_rate"
+//         | "avg_running_cadence"
+//         | "max_running_cadence"
+//         | "total_training_effect"
+//         | "first_lap_index"
+//         | "num_laps"
+//         | "avg_fractional_cadence"
+//         | "max_fractional_cadence"
+//         | "total_anaerobic_training_effect"
+//         | "sport"
+//         | "sub_sport"
+//         | "timestamp"
+//         | "start_time" => {
+//             return Some(format!(
+//                 "{:<30}: {:<#} {:<}\n",
+//                 pretty_field(fld),
+//                 fld.value(),
+//                 fld.units()
+//             ));
+//         }
+//         "total_ascent" | "total_descent" => {
+//             let result: Result<f64, _> = fld.value().clone().try_into();
+//             match result {
+//                 Ok(val) => {
+//                     let val_cvt = cvt_altitude(val as f32, &user_unit);
+//                     match user_unit {
+//                         Units::US => {
+//                             return Some(format!(
+//                                 "{:<30}: {:<.2} {:<}\n",
+//                                 pretty_field(fld),
+//                                 val_cvt,
+//                                 tr("UNIT_FEET", None),
+//                             ));
+//                         }
+//                         Units::Metric => {
+//                             return Some(format!(
+//                                 "{:<30}: {:<.2} {:<}\n",
+//                                 pretty_field(fld),
+//                                 val_cvt,
+//                                 tr("UNIT_METERS", None),
+//                             ));
+//                         }
+//                         Units::None => {
+//                             return Some(format!("{:<30}: {:<.2} {:<}\n", fld.name(), val_cvt, ""));
+//                         }
+//                     }
+//                 }
+//                 Err(_) => return None,
+//             }
+//         }
+//         "total_distance" => {
+//             let result: Result<f64, _> = fld.value().clone().try_into();
+//             match result {
+//                 Ok(val) => {
+//                     let val_cvt = cvt_distance(val as f32, &user_unit);
+//                     match user_unit {
+//                         Units::US => {
+//                             return Some(format!(
+//                                 "{:<30}: {:<.2} {:<}\n",
+//                                 pretty_field(fld),
+//                                 val_cvt,
+//                                 tr("UNIT_MILES", None),
+//                             ));
+//                         }
+//                         Units::Metric => {
+//                             return Some(format!(
+//                                 "{:<30}: {:<.2} {:<}\n",
+//                                 pretty_field(fld),
+//                                 val_cvt,
+//                                 tr("UNIT_KM", None),
+//                             ));
+//                         }
+//                         Units::None => {
+//                             return Some(format!("{:<30}: {:<.2} {:<}\n", fld.name(), val_cvt, ""));
+//                         }
+//                     }
+//                 }
+//                 Err(_) => return None,
+//             }
+//         }
+//         "total_elapsed_time" | "total_timer_time" => {
+//             let result: Result<f64, _> = fld.value().clone().try_into();
+//             match result {
+//                 Ok(val) => {
+//                     let val_cvt = cvt_elapsed_time(val as f32);
+//                     return Some(format!(
+//                         "{:<30}: {:01}h:{:02}m:{:02}s\n",
+//                         pretty_field(fld),
+//                         val_cvt.0,
+//                         val_cvt.1,
+//                         val_cvt.2
+//                     ));
+//                 }
+//                 Err(_) => return None,
+//             }
+//         }
+//         "min_temperature" | "max_temperature" | "avg_temperature" => {
+//             let result: Result<i64, _> = fld.value().clone().try_into();
+//             match result {
+//                 Ok(val) => {
+//                     let val_cvt = cvt_temperature(val as f32, &user_unit);
+//                     match user_unit {
+//                         Units::US => {
+//                             return Some(format!(
+//                                 "{:<30}: {:<.2} {:<}\n",
+//                                 pretty_field(fld),
+//                                 val_cvt,
+//                                 "°F"
+//                             ));
+//                         }
+//                         Units::Metric => {
+//                             return Some(format!(
+//                                 "{:<30}: {:<.2} {:<}\n",
+//                                 pretty_field(fld),
+//                                 val_cvt,
+//                                 "°C"
+//                             ));
+//                         }
+//                         Units::None => {
+//                             return Some(format!("{:<30}: {:<.2} {:<}\n", fld.name(), val_cvt, ""));
+//                         }
+//                     }
+//                 }
+//                 Err(_) => return None,
+//             }
+//         }
+//         "enhanced_avg_speed" | "enhanced_max_speed" => {
+//             let result: Result<f64, _> = fld.value().clone().try_into();
+//             match result {
+//                 Ok(val) => {
+//                     let decimal_val = cvt_pace(val as f32, &user_unit);
+//                     let mins = decimal_val.trunc();
+//                     let secs = decimal_val.fract() * 60.0;
+//                     let val_cvt = format!("{:02.0}:{:02.0}", mins, secs);
+//                     match user_unit {
+//                         Units::US => {
+//                             return Some(format!(
+//                                 "{:<30}: {:<} {:<}\n",
+//                                 pretty_field(fld),
+//                                 val_cvt,
+//                                 tr("UNIT_PACE_US", None),
+//                             ));
+//                         }
+//                         Units::Metric => {
+//                             return Some(format!(
+//                                 "{:<30}: {:<} {:<}\n",
+//                                 pretty_field(fld),
+//                                 val_cvt,
+//                                 tr("UNIT_PACE_METRIC", None),
+//                             ));
+//                         }
+//                         Units::None => {
+//                             return Some(format!("{:<30}: {:<} {:<}\n", fld.name(), val_cvt, ""));
+//                         }
+//                     }
+//                 }
+//                 Err(_) => return None,
+//             }
+//         }
+//         _ => return None, // matches other patterns
+//     }
+// }
+
+// Build a summary.
+fn build_summary(data: &Vec<(chrono::DateTime<chrono::Utc>, PathBuf)>, ui: &UserInterface) {
+    // // Get the enumerated value for the unit system the user selected.
+    // let user_unit = get_unit_system(&ui.units_widget);
+    // ui.text_buffer.set_text(&tr("SUMMARY_FILE_LOADED", None));
+    // // Clear out anything in the buffer.
+    // let mut start = ui.text_buffer.start_iter();
+    // let mut end = ui.text_buffer.end_iter();
+    // ui.text_buffer.delete(&mut start, &mut end);
+    // let mut lap_index: u8 = 0;
+    // let mut lap_str: String;
+    // for item in data {
+    //     match item.kind() {
+    //         MesgNum::Session => {
+    //             // print all the data records in FIT file
+    //             ui.text_buffer.insert(&mut end, "\n");
+    //             ui.text_buffer
+    //                 .insert(&mut end, &tr("SUMMARY_SESSION_HEADER", None));
+    //             ui.text_buffer.insert(&mut end, "\n");
+    //             ui.text_buffer.insert(&mut end, "\n");
+    //             // Retrieve the FitDataField struct.
+    //             for fld in item.fields().iter() {
+    //                 let value_str = format_string_for_field(fld, &user_unit);
+    //                 if value_str.is_some() {
+    //                     ui.text_buffer.insert(&mut end, &value_str.unwrap());
+    //                 }
+    //             }
+    //         }
+    //         _ => print!("{}", ""), // matches other patterns
+    //     }
+    // }
+    // if let (Some(zone_times), Some(zone_limits)) = get_time_in_zone_field(data) {
+    //     // There are 7 zones but only 6 upper limits.
+    //     ui.text_buffer.insert(&mut end, "\n");
+    //     ui.text_buffer
+    //         .insert(&mut end, &tr("SUMMARY_HR_ZONE_HEADER", None));
+    //     ui.text_buffer.insert(&mut end, "\n");
+    //     ui.text_buffer.insert(&mut end, "\n");
+    //     for (z, val) in zone_times.iter().enumerate() {
+    //         let val_cvt = cvt_elapsed_time(*val as f32);
+    //         let ll: f64;
+    //         let ul: f64;
+    //         if z == 0 {
+    //             ll = 0.0;
+    //             ul = zone_limits[z];
+    //         } else if z < zone_limits.len() && z > 0 {
+    //             ll = zone_limits[z - 1];
+    //             ul = zone_limits[z];
+    //         } else {
+    //             ll = zone_limits[z - 1];
+    //             ul = 220.0;
+    //         }
+    //         let value_str = format!(
+    //             "{:<5}{:<} ({:>3}-{:>3} bpm): {:01}h:{:02}m:{:02}s\n",
+    //             tr("SUMMARY_HR_ZONE_LABEL", None),
+    //             z,
+    //             ll as i32,
+    //             ul as i32,
+    //             val_cvt.0,
+    //             val_cvt.1,
+    //             val_cvt.2
+    //         );
+    //         ui.text_buffer.insert(&mut end, &value_str);
+    //     }
+    //     ui.text_buffer.insert(&mut end, "\n");
+    // };
+    // for item in data {
+    //     match item.kind() {
+    //         MesgNum::Lap => {
+    //             lap_index = lap_index + 1;
+    //             let lap_name = &tr("SUMMARY_LAP_HEADER", None);
+    //             lap_str = format!(
+    //                 "------------------------------ {} {} ----------------------------------\n",
+    //                 lap_name, lap_index
+    //             );
+    //             ui.text_buffer.insert(&mut end, "\n");
+    //             ui.text_buffer.insert(&mut end, &lap_str);
+    //             ui.text_buffer.insert(&mut end, "\n");
+    //             // Retrieve the FitDataField struct.
+    //             for fld in item.fields().iter() {
+    //                 let value_str = format_string_for_field(fld, &user_unit);
+    //                 if value_str.is_some() {
+    //                     ui.text_buffer.insert(&mut end, &value_str.unwrap());
+    //                 }
+    //             }
+    //         }
+    //         _ => print!("{}", ""), // matches other patterns
+    //     }
+    // }
 }
