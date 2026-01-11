@@ -44,7 +44,6 @@ use gtk4::{
     ButtonsType, FileChooserAction, FileChooserNative, License, MessageDialog, MessageType,
     ResponseType, gio,
 };
-use gui::{plot_session_metric, print_activity_summaries};
 use libadwaita::{Application, WindowTitle};
 use semver::{BuildMetadata, Prerelease};
 use std::error::Error;
@@ -254,7 +253,7 @@ fn build_gui(app: &Application, files: &[gtk4::gio::File], _: &str) {
             let result = get_files_in_range(&lookup, start_date, end_date);
 
             // Print the list of activities and their distances
-            print_activity_summaries(&result);
+            // print_activity_summaries(&result);
             tie_it_all_together(&result, &ui1);
         },
     )); //open action

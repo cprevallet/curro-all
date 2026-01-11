@@ -460,42 +460,6 @@ pub fn set_up_user_defaults(ui: &UserInterface) {
 // #####################################################################
 //
 
-/// Extract the data, sort and display in the terminal.
-pub fn print_activity_summaries(results: &[(DateTime<Utc>, PathBuf)]) {
-    println!(
-        "{:<25} | {:<8} | {:<5} | {:<7} | {:<7} | {:<7} | {:<7}",
-        "Date & Time", "Dist(mi)", "Cal", "Time", "mph", "Asc(ft)", "Des(ft)"
-    );
-    println!("{:-<95}", "");
-
-    let mut summaries: Vec<(DateTime<Utc>, SessionStats)> = results
-        .into_par_iter()
-        .map(|(ts, path)| (*ts, extract_session_data(path).unwrap_or_default()))
-        .collect();
-
-    summaries.sort_by_key(|(ts, _)| *ts);
-
-    for (ts, stats) in summaries {
-        // Conversions
-        let miles = stats.distance / 1000.0 * 0.621371;
-        let mph = stats.enhanced_speed * 2.23694; // m/s to mph
-        let ascent_ft = stats.ascent as f64 * 3.28084;
-        let descent_ft = stats.descent as f64 * 3.28084;
-        let mins = stats.duration / 60.0;
-
-        println!(
-            "{:<25} | {:>8.2} | {:>5} | {:>6.1}m | {:>7.1} | {:>7.0} | {:>7.0}",
-            ts.format("%Y-%m-%d").to_string(),
-            miles,
-            stats.calories,
-            mins,
-            mph,
-            ascent_ft,
-            descent_ft
-        );
-    }
-}
-
 /// Generates a LineSeries chart for a specific metric.
 pub fn plot_session_metric(
     a: &plotters::drawing::DrawingArea<CairoBackend<'_>, plotters::coord::Shift>,
@@ -1048,11 +1012,46 @@ fn update_map_graph_and_summary_widgets(
 fn build_summary(data: &Vec<(chrono::DateTime<chrono::Utc>, PathBuf)>, ui: &UserInterface) {
     // // Get the enumerated value for the unit system the user selected.
     // let user_unit = get_unit_system(&ui.units_widget);
-    // ui.text_buffer.set_text(&tr("SUMMARY_FILE_LOADED", None));
     // // Clear out anything in the buffer.
-    // let mut start = ui.text_buffer.start_iter();
-    // let mut end = ui.text_buffer.end_iter();
-    // ui.text_buffer.delete(&mut start, &mut end);
+    let mut start = ui.text_buffer.start_iter();
+    let mut end = ui.text_buffer.end_iter();
+    ui.text_buffer.delete(&mut start, &mut end);
+    let output_str = format!(
+        "{:<25} | {:<8} | {:<5} | {:<7} | {:<7} | {:<7} | {:<7}",
+        "Date & Time", "Dist(mi)", "Cal", "Time", "mph", "Asc(ft)", "Des(ft)\n"
+    );
+    ui.text_buffer.insert(&mut end, &output_str);
+    let output_str = format!("{:-<95}\n", "");
+    ui.text_buffer.insert(&mut end, &output_str);
+
+    let mut summaries: Vec<(DateTime<Utc>, SessionStats)> = data
+        .into_par_iter()
+        .map(|(ts, path)| (*ts, extract_session_data(path).unwrap_or_default()))
+        .collect();
+
+    summaries.sort_by_key(|(ts, _)| *ts);
+
+    for (ts, stats) in summaries {
+        // Conversions
+        let miles = stats.distance / 1000.0 * 0.621371;
+        let mph = stats.enhanced_speed * 2.23694; // m/s to mph
+        let ascent_ft = stats.ascent as f64 * 3.28084;
+        let descent_ft = stats.descent as f64 * 3.28084;
+        let mins = stats.duration / 60.0;
+
+        let output_str = format!(
+            "{:<25} | {:>8.2} | {:>5} | {:>6.1}m | {:>7.1} | {:>7.0} | {:>7.0}\n",
+            ts.format("%Y-%m-%d").to_string(),
+            miles,
+            stats.calories,
+            mins,
+            mph,
+            ascent_ft,
+            descent_ft
+        );
+        ui.text_buffer.insert(&mut end, &output_str);
+    }
+
     // let mut lap_index: u8 = 0;
     // let mut lap_str: String;
     // for item in data {
