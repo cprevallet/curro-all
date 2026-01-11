@@ -459,16 +459,11 @@ pub fn set_up_user_defaults(ui: &UserInterface) {
 // ##################### GRAPH FUNCTIONS ###############################
 // #####################################################################
 //
-
-/// Generates a LineSeries chart for a specific metric.
-pub fn plot_session_metric(
-    a: &plotters::drawing::DrawingArea<CairoBackend<'_>, plotters::coord::Shift>,
+/// Private helper to process and sort FIT data for visualization
+fn prepare_data(
     results: &[(DateTime<Utc>, PathBuf)],
-    metric_name: &str,
-    unit_label: &str,
     value_extractor: fn(&SessionStats) -> f64,
-) -> Result<(), Box<dyn std::error::Error>> {
-    // 1. Prepare and sort data
+) -> Vec<(DateTime<Utc>, f64)> {
     let mut data: Vec<(DateTime<Utc>, f64)> = results
         .into_par_iter()
         .map(|(ts, path)| {
@@ -478,16 +473,38 @@ pub fn plot_session_metric(
         .collect();
 
     data.sort_by_key(|(ts, _)| *ts);
+    data
+}
 
-    if data.is_empty() {
+/// Generates a LineSeries chart for a specific metric.
+pub fn plot_session_metric(
+    a: &plotters::drawing::DrawingArea<CairoBackend<'_>, plotters::coord::Shift>,
+    // results: &[(DateTime<Utc>, PathBuf)],
+    plotvals: Vec<(DateTime<Utc>, f64)>,
+    metric_name: &str,
+    unit_label: &str,
+    // value_extractor: fn(&SessionStats) -> f64,
+) -> Result<(), Box<dyn std::error::Error>> {
+    // 1. Prepare and sort plotvals
+    // let mut plotvals: Vec<(DateTime<Utc>, f64)> = results
+    //     .into_par_iter()
+    //     .map(|(ts, path)| {
+    //         let stats = extract_session_plotvals(path).unwrap_or_default();
+    //         (*ts, value_extractor(&stats))
+    //     })
+    //     .collect();
+
+    // plotvals.sort_by_key(|(ts, _)| *ts);
+
+    if plotvals.is_empty() {
         return Ok(());
     }
 
     // 2. Set up the drawing area
     // let root = BitMapBackend::new(file_name, (1024, 768)).into_drawing_area();
 
-    let (start_date, end_date) = (data.first().unwrap().0, data.last().unwrap().0);
-    let max_val = data.iter().map(|(_, v)| *v).fold(0.0, f64::max) * 1.1;
+    let (start_date, end_date) = (plotvals.first().unwrap().0, plotvals.last().unwrap().0);
+    let max_val = plotvals.iter().map(|(_, v)| *v).fold(0.0, f64::max) * 1.1;
 
     // 3. Build the chart
     let mut chart = ChartBuilder::on(&a)
@@ -507,7 +524,7 @@ pub fn plot_session_metric(
     // 4. Draw the Line Series
     chart
         .draw_series(LineSeries::new(
-            data.iter().map(|(date, val)| (*date, *val)),
+            plotvals.iter().map(|(date, val)| (*date, *val)),
             &RED,
         ))?
         .label(metric_name)
@@ -515,7 +532,8 @@ pub fn plot_session_metric(
 
     // 5. Draw Scatter Points
     chart.draw_series(
-        data.iter()
+        plotvals
+            .iter()
             .map(|(date, val)| Circle::new((*date, *val), 3, RED.filled())),
     )?;
 
@@ -529,7 +547,13 @@ pub fn plot_session_metric(
 }
 // Use plotters.rs to draw a graph on the drawing area.
 fn draw_graphs(
-    data: &Vec<(chrono::DateTime<chrono::Utc>, PathBuf)>,
+    // data: &Vec<(chrono::DateTime<chrono::Utc>, PathBuf)>,
+    distance_plotvals: &Vec<(DateTime<Utc>, f64)>,
+    calories_plotvals: &Vec<(DateTime<Utc>, f64)>,
+    ascent_plotvals: &Vec<(DateTime<Utc>, f64)>,
+    duration_plotvals: &Vec<(DateTime<Utc>, f64)>,
+    speed_plotvals: &Vec<(DateTime<Utc>, f64)>,
+    descent_plotvals: &Vec<(DateTime<Utc>, f64)>,
     cr: &Context,
     width: f64,
     height: f64,
@@ -543,36 +567,33 @@ fn draw_graphs(
     areas = root.split_evenly((3, 2));
 
     // Generate Distance Graph (Miles)
-    plot_session_metric(&areas[0], &data, "Distance", "Miles", |s| {
-        s.distance / 1000.0 * 0.621371
-    })
-    .unwrap();
+    plot_session_metric(&areas[0], distance_plotvals.to_vec(), "Distance", "Miles").unwrap();
 
     // Generate Calories Graph
-    plot_session_metric(&areas[1], &data, "Calories", "kcal", |s| s.calories as f64).unwrap();
+    plot_session_metric(&areas[1], calories_plotvals.to_vec(), "Calories", "kcal").unwrap();
 
     // Generate Ascent Graph (Feet)
-    plot_session_metric(&areas[2], &data, "Elevation Gain", "Feet", |s| {
-        s.ascent as f64 * 3.28084
-    })
+    plot_session_metric(
+        &areas[2],
+        ascent_plotvals.to_vec(),
+        "Elevation Gain",
+        "Feet",
+    )
     .unwrap();
 
     // Generate Duration Graph (Minutes)
-    plot_session_metric(&areas[3], &data, "Duration", "Minutes", |s| {
-        s.duration / 60.0
-    })
-    .unwrap();
+    plot_session_metric(&areas[3], duration_plotvals.to_vec(), "Duration", "Minutes").unwrap();
 
     // Generate Average Speed Graph (MPH)
-    plot_session_metric(&areas[4], &data, "Average Speed", "MPH", |s| {
-        s.enhanced_speed * 2.23694 // m/s to mph
-    })
-    .unwrap();
+    plot_session_metric(&areas[4], speed_plotvals.to_vec(), "Average Speed", "MPH").unwrap();
 
     // Generate Descent Graph (Feet)
-    plot_session_metric(&areas[5], &data, "Elevation Loss", "Feet", |s| {
-        s.descent as f64 * 3.28084
-    })
+    plot_session_metric(
+        &areas[5],
+        descent_plotvals.to_vec(),
+        "Elevation Loss",
+        "Feet",
+    )
     .unwrap();
 
     let _ = root.present();
@@ -770,9 +791,31 @@ fn draw_graphs(
 fn build_graphs(data: &Vec<(chrono::DateTime<chrono::Utc>, PathBuf)>, ui: &UserInterface) {
     // Need to clone to use inside the closure.
     let data_clone = data.clone();
+    let distance_plotvals: Vec<(DateTime<Utc>, f64)> =
+        prepare_data(&data_clone, |s| s.distance / 1000.0 * 0.621371);
+    let calories_plotvals: Vec<(DateTime<Utc>, f64)> =
+        prepare_data(&data_clone, |s| s.calories as f64);
+    let ascent_plotvals: Vec<(DateTime<Utc>, f64)> =
+        prepare_data(&data_clone, |s| s.ascent as f64 * 3.28084);
+    let duration_plotvals: Vec<(DateTime<Utc>, f64)> =
+        prepare_data(&data_clone, |s| s.duration / 60.0);
+    let speed_plotvals: Vec<(DateTime<Utc>, f64)> =
+        prepare_data(&data_clone, |s| s.enhanced_speed * 2.23694);
+    let descent_plotvals: Vec<(DateTime<Utc>, f64)> =
+        prepare_data(&data_clone, |s| s.descent as f64 * 3.28084);
     ui.da
         .set_draw_func(clone!(move |_drawing_area, cr, width, height| {
-            draw_graphs(&data_clone, cr, width as f64, height as f64);
+            draw_graphs(
+                &distance_plotvals,
+                &calories_plotvals,
+                &ascent_plotvals,
+                &duration_plotvals,
+                &speed_plotvals,
+                &descent_plotvals,
+                cr,
+                width as f64,
+                height as f64,
+            );
         }));
 }
 
