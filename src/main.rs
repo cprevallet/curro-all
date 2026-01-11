@@ -1,5 +1,6 @@
 use chrono::{DateTime, TimeZone, Utc};
 use dashmap::DashMap;
+use plotters::prelude::*;
 use rayon::prelude::*;
 use std::fs::File;
 use std::io::Read;
@@ -18,8 +19,116 @@ fn main() {
 
     // Print the list of activities and their distances
     print_activity_summaries(&result);
+
+    // Generate Distance Graph (Miles)
+    plot_session_metric(&result, "Distance", "distance_chart.png", "Miles", |s| {
+        s.distance / 1000.0 * 0.621371
+    })
+    .unwrap();
+
+    // Generate Calories Graph
+    plot_session_metric(&result, "Calories", "calories_chart.png", "kcal", |s| {
+        s.calories as f64
+    })
+    .unwrap();
+
+    // Generate Ascent Graph (Feet)
+    plot_session_metric(&result, "Elevation Gain", "ascent_chart.png", "Feet", |s| {
+        s.ascent as f64 * 3.28084
+    })
+    .unwrap();
+
+    // Generate Duration Graph (Minutes)
+    plot_session_metric(&result, "Duration", "duration_chart.png", "Minutes", |s| {
+        s.duration / 60.0
+    })
+    .unwrap();
+
+    // Generate Average Speed Graph (MPH)
+    plot_session_metric(&result, "Average Speed", "speed_chart.png", "MPH", |s| {
+        s.enhanced_speed * 2.23694 // m/s to mph
+    })
+    .unwrap();
+
+    // Generate Descent Graph (Feet)
+    plot_session_metric(
+        &result,
+        "Elevation Loss",
+        "descent_chart.png",
+        "Feet",
+        |s| s.descent as f64 * 3.28084,
+    )
+    .unwrap();
 }
 
+fn plot_session_metric(
+    results: &[(DateTime<Utc>, PathBuf)],
+    metric_name: &str,
+    file_name: &str,
+    unit_label: &str,
+    value_extractor: fn(&SessionStats) -> f64,
+) -> Result<(), Box<dyn std::error::Error>> {
+    // 1. Prepare and sort data
+    let mut data: Vec<(DateTime<Utc>, f64)> = results
+        .into_par_iter()
+        .map(|(ts, path)| {
+            let stats = extract_session_data(path).unwrap_or_default();
+            (*ts, value_extractor(&stats))
+        })
+        .collect();
+
+    data.sort_by_key(|(ts, _)| *ts);
+
+    if data.is_empty() {
+        return Ok(());
+    }
+
+    // 2. Set up the drawing area
+    let root = BitMapBackend::new(file_name, (1024, 768)).into_drawing_area();
+    root.fill(&WHITE)?;
+
+    let (start_date, end_date) = (data.first().unwrap().0, data.last().unwrap().0);
+    let max_val = data.iter().map(|(_, v)| *v).fold(0.0, f64::max) * 1.1;
+
+    // 3. Build the chart
+    let mut chart = ChartBuilder::on(&root)
+        .caption(format!("{} over Time", metric_name), ("sans-serif", 40))
+        .margin(20)
+        .x_label_area_size(40)
+        .y_label_area_size(60)
+        .build_cartesian_2d(start_date..end_date, 0.0..max_val)?;
+
+    chart
+        .configure_mesh()
+        .x_labels(10)
+        .y_desc(unit_label)
+        .draw()?;
+
+    // 4. Draw the Line Series
+    chart
+        .draw_series(LineSeries::new(
+            data.iter().map(|(date, val)| (*date, *val)),
+            &RED,
+        ))?
+        .label(metric_name)
+        .legend(|(x, y)| PathElement::new(vec![(x, y), (x + 20, y)], &RED));
+
+    // 5. Draw Scatter Points (Optional: makes individual activities visible)
+    chart.draw_series(
+        data.iter()
+            .map(|(date, val)| Circle::new((*date, *val), 3, RED.filled())),
+    )?;
+
+    chart
+        .configure_series_labels()
+        .background_style(&WHITE.mix(0.8))
+        .border_style(&BLACK)
+        .draw()?;
+
+    root.present()?;
+    println!("Chart saved to {}", file_name);
+    Ok(())
+}
 struct SessionStats {
     distance: f64,
     calories: u16,

@@ -11,3 +11,4 @@ walkdir = "2.5"
 
 # Date and Time handling
 chrono = { version = "0.4", features = ["serde"] }
+plotters = "0.3.7"
