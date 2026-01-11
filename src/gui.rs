@@ -8,15 +8,14 @@ use crate::config::{ICON_NAME, PROGRAM_NAME, SETTINGSFILE, Units, load_config};
 // };
 use crate::i18n::tr;
 use directories::BaseDirs;
-use fitparser::{FitDataField, FitDataRecord, profile::field_types::MesgNum};
 use gtk4::cairo::Context;
 use gtk4::ffi::GTK_STYLE_PROVIDER_PRIORITY_APPLICATION;
 use gtk4::glib::clone;
 use gtk4::prelude::*;
 use gtk4::{
     Adjustment, Button, DrawingArea, DropDown, Frame, HeaderBar, Image, Label, MenuButton,
-    Orientation, Overlay, Popover, Scale, ScrolledWindow, StringList, StringObject, TextBuffer,
-    TextView, gdk,
+    Orientation, Overlay, Popover, ScrolledWindow, StringList, StringObject, TextBuffer, TextView,
+    gdk,
 };
 use libadwaita::prelude::*;
 use libadwaita::{Application, ApplicationWindow, StyleManager, WindowTitle};
@@ -27,7 +26,6 @@ use std::path::Path;
 use std::rc::Rc;
 
 use chrono::{DateTime, Utc};
-use plotters::prelude::*;
 use rayon::prelude::*;
 use std::path::PathBuf;
 
@@ -120,7 +118,6 @@ pub struct UserInterface {
     pub scrolled_window: ScrolledWindow,
     pub da_window: ScrolledWindow,
     pub y_zoom_adj: Adjustment,
-    pub x_zoom_adj: Adjustment,
     pub y_zoom_box: gtk4::Box,
     pub curr_time_label: Label,
     pub controls_box: gtk4::Box,
@@ -207,13 +204,6 @@ pub fn instantiate_ui(app: &Application) -> UserInterface {
         da_window: ScrolledWindow::builder()
             .vexpand(true)
             .hexpand(true)
-            .build(),
-        x_zoom_adj: Adjustment::builder()
-            .lower(0.5)
-            .upper(2.0)
-            .step_increment(0.1)
-            .page_increment(0.1)
-            .value(1.0)
             .build(),
         y_zoom_adj: Adjustment::builder()
             .lower(0.5)
@@ -349,8 +339,8 @@ pub fn construct_views_from_data(
 
 // Connect up the interactive widget handlers.
 pub fn connect_interactive_widgets(
-    ui: &Rc<UserInterface>,
-    data: &Vec<(chrono::DateTime<chrono::Utc>, PathBuf)>,
+    _ui: &Rc<UserInterface>,
+    _data: &Vec<(chrono::DateTime<chrono::Utc>, PathBuf)>,
 ) {
     // // clone the Rc pointer for each independent closure that needs the data.
     // let mc_rc_for_units = Rc::clone(&mc_rc);
@@ -427,7 +417,7 @@ pub fn connect_interactive_widgets(
 }
 
 // Return a unit enumeration from a units widget.
-pub fn get_unit_system(units_widget: &DropDown) -> Units {
+pub fn _get_unit_system(units_widget: &DropDown) -> Units {
     if units_widget.model().is_some() {
         let model = units_widget.model().unwrap();
         if let Some(item_obj) = model.item(units_widget.selected()) {
@@ -553,14 +543,10 @@ pub fn plot_session_metric(
         .draw()?;
 
     // 4. Draw the Line Series
-    chart
-        .draw_series(LineSeries::new(
-            plotvals.iter().map(|(date, val)| (*date, *val)),
-            &color,
-        ))?
-        // .label(metric_name)
-        // .legend(|(x, y)| PathElement::new(vec![(x, y), (x + 20, y)], &color))
-        ;
+    chart.draw_series(LineSeries::new(
+        plotvals.iter().map(|(date, val)| (*date, *val)),
+        &color,
+    ))?;
 
     // 5. Draw Scatter Points
     chart.draw_series(
@@ -568,12 +554,6 @@ pub fn plot_session_metric(
             .iter()
             .map(|(date, val)| Circle::new((*date, *val), 3, color.filled())),
     )?;
-
-    // chart
-    //     .configure_series_labels()
-    //     .background_style(&WHITE.mix(0.8))
-    //     .border_style(&BLACK)
-    //     .draw()?;
 
     Ok(())
 }
@@ -593,10 +573,7 @@ fn draw_graphs(
     let root = plotters_cairo::CairoBackend::new(&cr, (width as u32, height as u32))
         .unwrap()
         .into_drawing_area();
-    // root.fill(&WHITE);
-    let mut areas: Vec<plotters::drawing::DrawingArea<CairoBackend<'_>, plotters::coord::Shift>> =
-        Vec::new();
-    areas = root.split_evenly((3, 2));
+    let areas = root.split_evenly((3, 2));
 
     // Generate Distance Graph (Miles)
     plot_session_metric(
@@ -659,195 +636,8 @@ fn draw_graphs(
     .unwrap();
 
     let _ = root.present();
-    // --- 🎨 Custom Drawing Logic Starts Here ---
-    // let gc = &**gc_rc;
-    // let root = plotters_cairo::CairoBackend::new(&cr, (width as u32, height as u32))
-    //     .unwrap()
-    //     .into_drawing_area();
-    // // Plot only the cache values with data in them.
-    // let gc2 = Rc::clone(&gc_rc);
-    // let mut graphs_with_data: Vec<&GraphAttributes> = Vec::new();
-    // if gc.distance_pace.plotvals.len() != 0 {
-    //     graphs_with_data.push(&gc2.distance_pace);
-    // };
-    // if gc.distance_heart_rate.plotvals.len() != 0 {
-    //     graphs_with_data.push(&gc2.distance_heart_rate);
-    // };
-    // if gc.distance_cadence.plotvals.len() != 0 {
-    //     graphs_with_data.push(&gc2.distance_cadence);
-    // };
-    // if gc.distance_elevation.plotvals.len() != 0 {
-    //     graphs_with_data.push(&gc2.distance_elevation);
-    // };
-    // if gc.distance_temperature.plotvals.len() != 0 {
-    //     graphs_with_data.push(&gc2.distance_temperature);
-    // };
-    // let mut areas: Vec<plotters::drawing::DrawingArea<CairoBackend<'_>, plotters::coord::Shift>> =
-    //     Vec::new();
-    // if graphs_with_data.len() == 1 {
-    //     areas.push(root.clone());
-    // }
-    // if graphs_with_data.len() == 2 {
-    //     areas = root.split_evenly((1, 2));
-    // }
-    // if graphs_with_data.len() == 3 {
-    //     areas = root.split_evenly((3, 1));
-    // }
-    // if graphs_with_data.len() == 4 {
-    //     areas = root.split_evenly((2, 2));
-    // }
-    // if graphs_with_data.len() == 5 || graphs_with_data.len() == 6 {
-    //     areas = root.split_evenly((3, 2));
-    // }
-    // let mut graph_colors: Vec<RGBColor> = Vec::new();
-    // graph_colors.push(GREEN);
-    // graph_colors.push(BLUE);
-    // graph_colors.push(CYAN);
-    // graph_colors.push(RED);
-    // graph_colors.push(BROWN);
-    // graph_colors.push(YELLOW);
-    // // Declare and initialize.
-    // for (a, idx) in areas.iter().zip(1..) {
-    //     if (idx - 1) < graphs_with_data.len() {
-    //         build_individual_graph(
-    //             &graphs_with_data[idx - 1].plotvals,
-    //             graphs_with_data[idx - 1].caption.as_str(),
-    //             graphs_with_data[idx - 1].xlabel.as_str(),
-    //             graphs_with_data[idx - 1].ylabel.as_str(),
-    //             &graphs_with_data[idx - 1].plot_range,
-    //             &graphs_with_data[idx - 1].y_formatter,
-    //             &graph_colors[idx - 1],
-    //             curr_adj,
-    //             a,
-    //         );
-    //     }
-    // }
-
-    let _ = root.present();
-    // --- Custom Drawing Logic Ends Here ---
 }
 
-// Use plotters to actually draw a graph.
-// fn build_individual_graph(
-//     plotvals: &Vec<(f32, f32)>,
-//     caption: &str,
-//     xlabel: &str,
-//     ylabel: &str,
-//     plot_range: &(std::ops::Range<f32>, std::ops::Range<f32>),
-//     y_formatter: &Box<dyn Fn(&f32) -> String>,
-//     color: &RGBColor,
-//     curr_adj: &Adjustment,
-//     a: &plotters::drawing::DrawingArea<CairoBackend<'_>, plotters::coord::Shift>,
-// ) {
-//     let is_dark = StyleManager::default().is_dark();
-//     let mut caption_style = ("sans-serif", 16, &GREY_800).into_text_style(a);
-//     if is_dark {
-//         caption_style = ("sans-serif", 16, &GREY_200).into_text_style(a);
-//     }
-//     let mut chart = ChartBuilder::on(&a)
-//         // Set the caption of the chart
-//         .caption(caption, caption_style)
-//         // Set the size of the label region
-//         .x_label_area_size(40)
-//         .y_label_area_size(60)
-//         .margin(10)
-//         // Finally attach a coordinate on the drawing area and make a chart context
-//         .build_cartesian_2d(plot_range.clone().0, plot_range.clone().1)
-//         .unwrap();
-//     let mut axis_text_style = ("sans-serif", 10, &GREY_800).into_text_style(a);
-//     if is_dark {
-//         axis_text_style = ("sans-serif", 10, &GREY_200).into_text_style(a);
-//     }
-//     let light_line_style = ShapeStyle {
-//         color: color.mix(0.05),
-//         filled: false,
-//         stroke_width: 1,
-//     };
-//     let bold_line_style = ShapeStyle {
-//         color: color.mix(0.10),
-//         filled: false,
-//         stroke_width: 2,
-//     };
-//     let mut axis_style = ShapeStyle {
-//         // color: color.mix(0.3),
-//         color: GREY_600.mix(1.0),
-//         filled: false,
-//         stroke_width: 2,
-//     };
-//     if is_dark {
-//         axis_style = ShapeStyle {
-//             // color: color.mix(0.3),
-//             color: GREY_400.mix(1.0),
-//             filled: false,
-//             stroke_width: 2,
-//         };
-//     }
-
-//     let _ = chart
-//         .configure_mesh()
-//         // We can customize the maximum number of labels allowed for each axis
-//         .x_labels(5)
-//         .x_label_style(axis_text_style.clone())
-//         .y_labels(5)
-//         .y_label_style(axis_text_style.clone())
-//         .x_desc(xlabel)
-//         .y_desc(ylabel)
-//         .y_label_formatter(&y_formatter)
-//         .light_line_style(light_line_style)
-//         .bold_line_style(bold_line_style)
-//         .axis_style(axis_style)
-//         .draw();
-//     // // And we can draw something in the drawing area
-//     // We need to clone plotvals each time we make a call to LineSeries and PointSeries
-//     let _ = chart.draw_series(
-//         AreaSeries::new(plotvals.clone(), 0.0, color.mix(0.4)).border_style(color.mix(0.8)),
-//     );
-//     // Calculate the hairline.
-//     let idx = (curr_adj.value() * (plotvals.len() as f64 - 1.0)).trunc() as usize;
-//     if idx > 0 && idx < plotvals.len() - 1 {
-//         let hair_x = plotvals[idx].0;
-//         let hair_y = plotvals[idx].1;
-//         let mylabel = format!(
-//             "{:<1}: {:<5.2}{:<1}: {:>1}",
-//             xlabel,
-//             hair_x,
-//             ylabel,
-//             &y_formatter(&hair_y)
-//         )
-//         .to_string();
-//         let hair_y_min = plot_range.clone().0.start;
-//         let hair_y_max = plot_range.clone().1.end;
-//         let mut hairlinevals: Vec<(f32, f32)> = Vec::new();
-//         hairlinevals.push((hair_x, hair_y_min));
-//         hairlinevals.push((hair_x, hair_y_max));
-//         let _ = chart
-//             .draw_series(DashedLineSeries::new(
-//                 hairlinevals,
-//                 1,
-//                 4,
-//                 ShapeStyle {
-//                     color: GREY_600.mix(1.0),
-//                     filled: false,
-//                     stroke_width: 2,
-//                 },
-//             ))
-//             .unwrap()
-//             .label(mylabel);
-
-//         let mut label_text_style = ("sans-serif", 10, &GREY_600).into_text_style(a);
-//         if is_dark {
-//             label_text_style = ("sans-serif", 10, &GREY_400).into_text_style(a);
-//         }
-//         chart
-//             .configure_series_labels()
-//             .position(SeriesLabelPosition::UpperLeft)
-//             .margin(5)
-//             .legend_area_size(0)
-//             .label_font(label_text_style)
-//             .draw()
-//             .unwrap();
-//     }
-// }
 // Build the graphs.  Prepare the graphical data for the drawing area and
 // set-up the draw function callback.
 fn build_graphs(data: &Vec<(chrono::DateTime<chrono::Utc>, PathBuf)>, ui: &UserInterface) {
@@ -894,224 +684,6 @@ fn update_map_graph_and_summary_widgets(
 // #####################################################################
 // ##################### SUMMARY FUNCTIONS #############################
 // #####################################################################
-// Return a language specific string for the field name identifier.
-// fn pretty_field(fld: &FitDataField) -> String {
-//     match fld.name() {
-//         "start_position_lat" => return tr("PRETTY_START_POSITION_LAT", None),
-//         "start_position_long" => return tr("PRETTY_START_POSITION_LONG", None),
-//         "end_position_lat" => return tr("PRETTY_END_POSITION_LAT", None),
-//         "end_position_long" => return tr("PRETTY_END_POSITION_LONG", None),
-//         "total_strides" => return tr("PRETTY_TOTAL_STRIDES", None),
-//         "total_calories" => return tr("PRETTY_TOTAL_CALORIES", None),
-//         "avg_heart_rate" => return tr("PRETTY_AVG_HEART_RATE", None),
-//         "max_heart_rate" => return tr("PRETTY_MAX_HEART_RATE", None),
-//         "avg_running_cadence" => return tr("PRETTY_AVG_RUNNING_CADENCE", None),
-//         "max_running_cadence" => return tr("PRETTY_MAX_RUNNING_CADENCE", None),
-//         "total_training_effect" => return tr("PRETTY_TOTAL_TRAINING_EFFECT", None),
-//         "first_lap_index" => return tr("PRETTY_FIRST_LAP_INDEX", None),
-//         "num_laps" => return tr("PRETTY_NUM_LAPS", None),
-//         "avg_fractional_cadence" => return tr("PRETTY_AVG_FRACTIONAL_CADENCE", None),
-//         "max_fractional_cadence" => return tr("PRETTY_MAX_FRACTIONAL_CADENCE", None),
-//         "total_anaerobic_training_effect" => {
-//             return tr("PRETTY_TOTAL_ANAEROBIC_TRAINING_EFFECT", None);
-//         }
-//         "sport" => return tr("PRETTY_SPORT", None),
-//         "sub_sport" => return tr("PRETTY_SUB_SPORT", None),
-//         "timestamp" => return tr("PRETTY_TIMESTAMP", None),
-//         "start_time" => return tr("PRETTY_START_TIME", None),
-//         "total_ascent" => return tr("PRETTY_TOTAL_ASCENT", None),
-//         "total_descent" => return tr("PRETTY_TOTAL_DESCENT", None),
-//         "total_distance" => return tr("PRETTY_TOTAL_DISTANCE", None),
-//         "total_elapsed_time" => return tr("PRETTY_TOTAL_ELAPSED_TIME", None),
-//         "total_timer_time" => return tr("PRETTY_TOTAL_TIMER_TIME", None),
-//         "enhanced_avg_speed" => return tr("PRETTY_ENHANCED_AVG_SPEED", None),
-//         "enhanced_max_speed" => return tr("PRETTY_ENHANCED_MAX_SPEED", None),
-//         "min_temperature" => return tr("PRETTY_MIN_TEMPERATURE", None),
-//         "max_temperature" => return tr("PRETTY_MAX_TEMPERATURE", None),
-//         "avg_temperature" => return tr("PRETTY_AVG_TEMPERATURE", None),
-//         _ => return "".to_string(),
-//     }
-// }
-
-// // Convert a value to user-defined units and return a formatted string when supplied a field and units.
-// fn format_string_for_field(fld: &FitDataField, user_unit: &Units) -> Option<String> {
-//     match fld.name() {
-//         "start_position_lat" | "start_position_long" | "end_position_lat" | "end_position_long" => {
-//             let result: Result<i64, _> = fld.value().try_into();
-//             match result {
-//                 Ok(semi) => {
-//                     let degrees = semi_to_degrees(semi as f32);
-//                     return Some(format!("{:<30}: {degrees:<6.3}°\n", pretty_field(fld)));
-//                 }
-//                 Err(_) => return None,
-//             }
-//         }
-
-//         "total_strides"
-//         | "total_calories"
-//         | "avg_heart_rate"
-//         | "max_heart_rate"
-//         | "avg_running_cadence"
-//         | "max_running_cadence"
-//         | "total_training_effect"
-//         | "first_lap_index"
-//         | "num_laps"
-//         | "avg_fractional_cadence"
-//         | "max_fractional_cadence"
-//         | "total_anaerobic_training_effect"
-//         | "sport"
-//         | "sub_sport"
-//         | "timestamp"
-//         | "start_time" => {
-//             return Some(format!(
-//                 "{:<30}: {:<#} {:<}\n",
-//                 pretty_field(fld),
-//                 fld.value(),
-//                 fld.units()
-//             ));
-//         }
-//         "total_ascent" | "total_descent" => {
-//             let result: Result<f64, _> = fld.value().clone().try_into();
-//             match result {
-//                 Ok(val) => {
-//                     let val_cvt = cvt_altitude(val as f32, &user_unit);
-//                     match user_unit {
-//                         Units::US => {
-//                             return Some(format!(
-//                                 "{:<30}: {:<.2} {:<}\n",
-//                                 pretty_field(fld),
-//                                 val_cvt,
-//                                 tr("UNIT_FEET", None),
-//                             ));
-//                         }
-//                         Units::Metric => {
-//                             return Some(format!(
-//                                 "{:<30}: {:<.2} {:<}\n",
-//                                 pretty_field(fld),
-//                                 val_cvt,
-//                                 tr("UNIT_METERS", None),
-//                             ));
-//                         }
-//                         Units::None => {
-//                             return Some(format!("{:<30}: {:<.2} {:<}\n", fld.name(), val_cvt, ""));
-//                         }
-//                     }
-//                 }
-//                 Err(_) => return None,
-//             }
-//         }
-//         "total_distance" => {
-//             let result: Result<f64, _> = fld.value().clone().try_into();
-//             match result {
-//                 Ok(val) => {
-//                     let val_cvt = cvt_distance(val as f32, &user_unit);
-//                     match user_unit {
-//                         Units::US => {
-//                             return Some(format!(
-//                                 "{:<30}: {:<.2} {:<}\n",
-//                                 pretty_field(fld),
-//                                 val_cvt,
-//                                 tr("UNIT_MILES", None),
-//                             ));
-//                         }
-//                         Units::Metric => {
-//                             return Some(format!(
-//                                 "{:<30}: {:<.2} {:<}\n",
-//                                 pretty_field(fld),
-//                                 val_cvt,
-//                                 tr("UNIT_KM", None),
-//                             ));
-//                         }
-//                         Units::None => {
-//                             return Some(format!("{:<30}: {:<.2} {:<}\n", fld.name(), val_cvt, ""));
-//                         }
-//                     }
-//                 }
-//                 Err(_) => return None,
-//             }
-//         }
-//         "total_elapsed_time" | "total_timer_time" => {
-//             let result: Result<f64, _> = fld.value().clone().try_into();
-//             match result {
-//                 Ok(val) => {
-//                     let val_cvt = cvt_elapsed_time(val as f32);
-//                     return Some(format!(
-//                         "{:<30}: {:01}h:{:02}m:{:02}s\n",
-//                         pretty_field(fld),
-//                         val_cvt.0,
-//                         val_cvt.1,
-//                         val_cvt.2
-//                     ));
-//                 }
-//                 Err(_) => return None,
-//             }
-//         }
-//         "min_temperature" | "max_temperature" | "avg_temperature" => {
-//             let result: Result<i64, _> = fld.value().clone().try_into();
-//             match result {
-//                 Ok(val) => {
-//                     let val_cvt = cvt_temperature(val as f32, &user_unit);
-//                     match user_unit {
-//                         Units::US => {
-//                             return Some(format!(
-//                                 "{:<30}: {:<.2} {:<}\n",
-//                                 pretty_field(fld),
-//                                 val_cvt,
-//                                 "°F"
-//                             ));
-//                         }
-//                         Units::Metric => {
-//                             return Some(format!(
-//                                 "{:<30}: {:<.2} {:<}\n",
-//                                 pretty_field(fld),
-//                                 val_cvt,
-//                                 "°C"
-//                             ));
-//                         }
-//                         Units::None => {
-//                             return Some(format!("{:<30}: {:<.2} {:<}\n", fld.name(), val_cvt, ""));
-//                         }
-//                     }
-//                 }
-//                 Err(_) => return None,
-//             }
-//         }
-//         "enhanced_avg_speed" | "enhanced_max_speed" => {
-//             let result: Result<f64, _> = fld.value().clone().try_into();
-//             match result {
-//                 Ok(val) => {
-//                     let decimal_val = cvt_pace(val as f32, &user_unit);
-//                     let mins = decimal_val.trunc();
-//                     let secs = decimal_val.fract() * 60.0;
-//                     let val_cvt = format!("{:02.0}:{:02.0}", mins, secs);
-//                     match user_unit {
-//                         Units::US => {
-//                             return Some(format!(
-//                                 "{:<30}: {:<} {:<}\n",
-//                                 pretty_field(fld),
-//                                 val_cvt,
-//                                 tr("UNIT_PACE_US", None),
-//                             ));
-//                         }
-//                         Units::Metric => {
-//                             return Some(format!(
-//                                 "{:<30}: {:<} {:<}\n",
-//                                 pretty_field(fld),
-//                                 val_cvt,
-//                                 tr("UNIT_PACE_METRIC", None),
-//                             ));
-//                         }
-//                         Units::None => {
-//                             return Some(format!("{:<30}: {:<} {:<}\n", fld.name(), val_cvt, ""));
-//                         }
-//                     }
-//                 }
-//                 Err(_) => return None,
-//             }
-//         }
-//         _ => return None, // matches other patterns
-//     }
-// }
 
 // Build a summary.
 fn build_summary(data: &Vec<(chrono::DateTime<chrono::Utc>, PathBuf)>, ui: &UserInterface) {
@@ -1156,85 +728,4 @@ fn build_summary(data: &Vec<(chrono::DateTime<chrono::Utc>, PathBuf)>, ui: &User
         );
         ui.text_buffer.insert(&mut end, &output_str);
     }
-
-    // let mut lap_index: u8 = 0;
-    // let mut lap_str: String;
-    // for item in data {
-    //     match item.kind() {
-    //         MesgNum::Session => {
-    //             // print all the data records in FIT file
-    //             ui.text_buffer.insert(&mut end, "\n");
-    //             ui.text_buffer
-    //                 .insert(&mut end, &tr("SUMMARY_SESSION_HEADER", None));
-    //             ui.text_buffer.insert(&mut end, "\n");
-    //             ui.text_buffer.insert(&mut end, "\n");
-    //             // Retrieve the FitDataField struct.
-    //             for fld in item.fields().iter() {
-    //                 let value_str = format_string_for_field(fld, &user_unit);
-    //                 if value_str.is_some() {
-    //                     ui.text_buffer.insert(&mut end, &value_str.unwrap());
-    //                 }
-    //             }
-    //         }
-    //         _ => print!("{}", ""), // matches other patterns
-    //     }
-    // }
-    // if let (Some(zone_times), Some(zone_limits)) = get_time_in_zone_field(data) {
-    //     // There are 7 zones but only 6 upper limits.
-    //     ui.text_buffer.insert(&mut end, "\n");
-    //     ui.text_buffer
-    //         .insert(&mut end, &tr("SUMMARY_HR_ZONE_HEADER", None));
-    //     ui.text_buffer.insert(&mut end, "\n");
-    //     ui.text_buffer.insert(&mut end, "\n");
-    //     for (z, val) in zone_times.iter().enumerate() {
-    //         let val_cvt = cvt_elapsed_time(*val as f32);
-    //         let ll: f64;
-    //         let ul: f64;
-    //         if z == 0 {
-    //             ll = 0.0;
-    //             ul = zone_limits[z];
-    //         } else if z < zone_limits.len() && z > 0 {
-    //             ll = zone_limits[z - 1];
-    //             ul = zone_limits[z];
-    //         } else {
-    //             ll = zone_limits[z - 1];
-    //             ul = 220.0;
-    //         }
-    //         let value_str = format!(
-    //             "{:<5}{:<} ({:>3}-{:>3} bpm): {:01}h:{:02}m:{:02}s\n",
-    //             tr("SUMMARY_HR_ZONE_LABEL", None),
-    //             z,
-    //             ll as i32,
-    //             ul as i32,
-    //             val_cvt.0,
-    //             val_cvt.1,
-    //             val_cvt.2
-    //         );
-    //         ui.text_buffer.insert(&mut end, &value_str);
-    //     }
-    //     ui.text_buffer.insert(&mut end, "\n");
-    // };
-    // for item in data {
-    //     match item.kind() {
-    //         MesgNum::Lap => {
-    //             lap_index = lap_index + 1;
-    //             let lap_name = &tr("SUMMARY_LAP_HEADER", None);
-    //             lap_str = format!(
-    //                 "------------------------------ {} {} ----------------------------------\n",
-    //                 lap_name, lap_index
-    //             );
-    //             ui.text_buffer.insert(&mut end, "\n");
-    //             ui.text_buffer.insert(&mut end, &lap_str);
-    //             ui.text_buffer.insert(&mut end, "\n");
-    //             // Retrieve the FitDataField struct.
-    //             for fld in item.fields().iter() {
-    //                 let value_str = format_string_for_field(fld, &user_unit);
-    //                 if value_str.is_some() {
-    //                     ui.text_buffer.insert(&mut end, &value_str.unwrap());
-    //                 }
-    //             }
-    //         }
-    //         _ => print!("{}", ""), // matches other patterns
-    //     }
-    // }
 }

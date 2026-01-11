@@ -40,15 +40,10 @@ use chrono::{TimeZone, Utc};
 use data::{get_files_in_range, process_fit_directory};
 use gtk4::glib::clone;
 use gtk4::prelude::*;
-use gtk4::{
-    ButtonsType, FileChooserAction, FileChooserNative, License, MessageDialog, MessageType,
-    ResponseType, gio,
-};
-use libadwaita::{Application, WindowTitle};
+use gtk4::{ButtonsType, License, MessageDialog, MessageType, gio};
+use libadwaita::Application;
 use semver::{BuildMetadata, Prerelease};
 use std::error::Error;
-use std::fs::File;
-use std::io::ErrorKind;
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
 
@@ -97,85 +92,6 @@ pub fn show_error_dialog<W: IsA<gtk4::Window>>(parent: &W, text_str: String) {
     dialog.present();
 }
 
-// Update window title.
-// fn update_window_title(ui: &UserInterface, path_str: &str) {
-//     let c_title = ui.win.title().unwrap().to_string().to_owned();
-//     let mut pfx = c_title
-//         .chars()
-//         .take_while(|&ch| ch != ':')
-//         .collect::<String>();
-//     pfx.push_str(":");
-//     pfx.push_str(" ");
-//     pfx.push_str(&path_str);
-//     let window_title = WindowTitle::new(&pfx.to_string(), "");
-//     ui.header_bar.set_title_widget(Some(&window_title));
-// }
-
-// // Get the file handle from the command line.
-// fn get_file_handle_from_command_line(
-//     file: &gtk4::gio::File,
-//     ui: &Rc<UserInterface>,
-// ) -> Option<File> {
-//     if let Some(file_path) = file.path() {
-//         let path_buf = file.path().unwrap();
-//         let path_str = path_buf.to_string_lossy();
-//         let file_result = File::open(&file_path);
-//         match file_result {
-//             Ok(mut file) => {
-//                 update_window_title(&ui, &path_str);
-//                 tie_it_all_together(&mut file, &ui);
-//                 return Some(file);
-//             }
-//             Err(error) => match error.kind() {
-//                 // Handle specifically "Not Found"
-//                 ErrorKind::NotFound => {
-//                     println!("File not found.");
-//                     return None;
-//                 }
-//                 _ => {
-//                     println!("Error unknown. Not a Fit File? Permissions?");
-//                     return None;
-//                 }
-//             },
-//         };
-//     } else {
-//         return None;
-//     }
-// }
-
-// // Get the file handle from a dialog.
-// fn get_file_handle_from_dialog(dialog: &FileChooserNative, ui: &UserInterface) -> Option<File> {
-//     // Extract the file path
-//     if let Some(file) = dialog.file() {
-//         if let Some(path) = file.path() {
-//             let path_str = path.to_string_lossy();
-//             // Get values from fit file.
-//             let file_result = File::open(&*path_str);
-//             match file_result {
-//                 Ok(file) => {
-//                     update_window_title(&ui, &path_str);
-//                     return Some(file);
-//                 }
-//                 Err(error) => match error.kind() {
-//                     // Handle specifically "Not Found"
-//                     ErrorKind::NotFound => {
-//                         show_error_dialog(&ui.win, tr("MESSAGE_FILE_NOT_FOUND", None));
-//                         return None;
-//                     }
-//                     _ => {
-//                         show_error_dialog(&ui.win, tr("MESSAGE_PERMISSIONS", None));
-//                         return None;
-//                     }
-//                 },
-//             };
-//         } else {
-//             return None;
-//         }
-//     } else {
-//         return None;
-//     }
-// }
-
 // Get the data, create the caches, construct the views, and connect the interactive widgets.
 fn tie_it_all_together(
     data: &Vec<(chrono::DateTime<chrono::Utc>, PathBuf)>,
@@ -190,7 +106,7 @@ fn build_gui_no_files(app: &Application) {
     build_gui(&app, &[], "");
 }
 // Instantiate the user-interface views and handle callbacks.
-fn build_gui(app: &Application, files: &[gtk4::gio::File], _: &str) {
+fn build_gui(app: &Application, _files: &[gtk4::gio::File], _: &str) {
     // Instantiate the views.
     let ui_original = instantiate_ui(app);
     // Create a new reference count for the user_interface structure.
@@ -202,48 +118,12 @@ fn build_gui(app: &Application, files: &[gtk4::gio::File], _: &str) {
     let ui1 = Rc::clone(&ui_rc);
     ui_rc.win.present();
 
-    // // If the user has provided a file name on the command line - use the first file.
-    // if files.len() > 0 {
-    //     get_file_handle_from_command_line(&files[0], &ui_rc);
-    // }
-
     // Handle callbacks for btn and about_btn.
     let open_action = gio::SimpleAction::new("open", None);
     open_action.connect_activate(clone!(
         #[strong]
         ui1,
         move |_, _| {
-            // // 1. Create the Native Dialog
-            // // Notice the arguments: Title, Parent Window, Action, Accept Label, Cancel Label
-            // let native = FileChooserNative::new(
-            //     Some(&tr("OPEN_FILE_BUTTON_LABEL", None)),
-            //     Some(&ui1.win),
-            //     FileChooserAction::Open,
-            //     Some("Open"),   // Custom label for the "OK" button
-            //     Some("Cancel"), // Custom label for the "Cancel" button
-            // );
-
-            // let ui2 = Rc::clone(&ui_rc);
-            // // 2. Connect to the response signal
-            // native.connect_response(clone!(
-            //     #[strong]
-            //     ui2,
-            //     move |dialog, response| {
-            //         if response == ResponseType::Accept {
-            //             let fh = get_file_handle_from_dialog(&dialog, &ui2);
-            //             if fh.is_some() {
-            //                 let mut file = fh.unwrap();
-            //                 tie_it_all_together(&mut file, &ui2);
-            //                 // unlike FileChooserDialog, 'native' creates a transient reference.
-            //                 // It's good practice to drop references, but GTK handles the cleanup
-            //                 // once it goes out of scope or the window closes.
-            //             }
-            //         }
-            //     },
-            // ));
-            // // 3. Show the dialog
-            // native.show();
-
             let target_dir = "/home/craig/Documents/garmin/";
             let lookup = process_fit_directory(target_dir);
 
