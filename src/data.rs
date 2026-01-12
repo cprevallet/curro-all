@@ -1,4 +1,4 @@
-use chrono::{DateTime, Utc};
+use chrono::{DateTime, Datelike, Duration, TimeZone, Utc};
 use dashmap::DashMap;
 use rayon::prelude::*;
 use std::fs::File;
@@ -149,4 +149,121 @@ fn find_ts_in_vec(
         }
     }
     Err("Timestamp not found".into())
+}
+pub enum TimeBucket {
+    OneWeek,
+    TwoWeeks,
+    ThreeWeeks,
+    FourWeeks,
+
+    // This Year
+    JanuaryThisYear,
+    FebruaryThisYear,
+    MarchThisYear,
+    AprilThisYear,
+    MayThisYear,
+    JuneThisYear,
+    JulyThisYear,
+    AugustThisYear,
+    SeptemberThisYear,
+    OctoberThisYear,
+    NovemberThisYear,
+    DecemberThisYear,
+
+    // Last Year
+    JanuaryLastYear,
+    FebruaryLastYear,
+    MarchLastYear,
+    AprilLastYear,
+    MayLastYear,
+    JuneLastYear,
+    JulyLastYear,
+    AugustLastYear,
+    SeptemberLastYear,
+    OctoberLastYear,
+    NovemberLastYear,
+    DecemberLastYear,
+}
+
+pub fn get_time_range(bucket: TimeBucket) -> (DateTime<Utc>, DateTime<Utc>) {
+    let now = Utc::now();
+    let current_year = now.year();
+
+    match bucket {
+        // --- WEEKLY LOGIC (A..D) ---
+        TimeBucket::OneWeek
+        | TimeBucket::TwoWeeks
+        | TimeBucket::ThreeWeeks
+        | TimeBucket::FourWeeks => {
+            let sunday_count = match bucket {
+                TimeBucket::OneWeek => 1,
+                TimeBucket::TwoWeeks => 2,
+                TimeBucket::ThreeWeeks => 3,
+                TimeBucket::FourWeeks => 4,
+                _ => unreachable!(),
+            };
+
+            let today_start = Utc
+                .with_ymd_and_hms(current_year, now.month(), now.day(), 0, 0, 0)
+                .unwrap();
+            let days_since_sunday = now.weekday().num_days_from_sunday();
+            let most_recent_sunday = today_start - Duration::days(days_since_sunday as i64);
+
+            // Start from the specific Sunday at 00:00:00
+            let start_ts = most_recent_sunday - Duration::weeks(sunday_count - 1);
+
+            (start_ts, now)
+        }
+
+        // --- MONTHLY LOGIC (Current and Previous Year) ---
+        _ => {
+            let (month_num, target_year) = match bucket {
+                // This Year
+                TimeBucket::JanuaryThisYear => (1, current_year),
+                TimeBucket::FebruaryThisYear => (2, current_year),
+                TimeBucket::MarchThisYear => (3, current_year),
+                TimeBucket::AprilThisYear => (4, current_year),
+                TimeBucket::MayThisYear => (5, current_year),
+                TimeBucket::JuneThisYear => (6, current_year),
+                TimeBucket::JulyThisYear => (7, current_year),
+                TimeBucket::AugustThisYear => (8, current_year),
+                TimeBucket::SeptemberThisYear => (9, current_year),
+                TimeBucket::OctoberThisYear => (10, current_year),
+                TimeBucket::NovemberThisYear => (11, current_year),
+                TimeBucket::DecemberThisYear => (12, current_year),
+
+                // Last Year
+                TimeBucket::JanuaryLastYear => (1, current_year - 1),
+                TimeBucket::FebruaryLastYear => (2, current_year - 1),
+                TimeBucket::MarchLastYear => (3, current_year - 1),
+                TimeBucket::AprilLastYear => (4, current_year - 1),
+                TimeBucket::MayLastYear => (5, current_year - 1),
+                TimeBucket::JuneLastYear => (6, current_year - 1),
+                TimeBucket::JulyLastYear => (7, current_year - 1),
+                TimeBucket::AugustLastYear => (8, current_year - 1),
+                TimeBucket::SeptemberLastYear => (9, current_year - 1),
+                TimeBucket::OctoberLastYear => (10, current_year - 1),
+                TimeBucket::NovemberLastYear => (11, current_year - 1),
+                TimeBucket::DecemberLastYear => (12, current_year - 1),
+                _ => unreachable!(),
+            };
+
+            let start_ts = Utc
+                .with_ymd_and_hms(target_year, month_num, 1, 0, 0, 0)
+                .unwrap();
+
+            // Calculate end of month (last second of the month)
+            let end_ts = if month_num == 12 {
+                Utc.with_ymd_and_hms(target_year + 1, 1, 1, 0, 0, 0)
+                    .unwrap()
+                    - Duration::seconds(1)
+            } else {
+                Utc.with_ymd_and_hms(target_year, month_num + 1, 1, 0, 0, 0)
+                    .unwrap()
+                    - Duration::seconds(1)
+            };
+
+            (start_ts, end_ts)
+        }
+    }
 }

@@ -38,7 +38,7 @@ use crate::gui::{
 };
 use crate::i18n::tr;
 use chrono::{TimeZone, Utc};
-use data::{get_files_in_range, process_fit_directory};
+use data::{TimeBucket, get_files_in_range, get_time_range, process_fit_directory};
 use gtk4::glib::clone;
 use gtk4::prelude::*;
 use gtk4::{ButtonsType, License, MessageDialog, MessageType, gio};
@@ -161,12 +161,9 @@ fn build_gui(app: &Application, _files: &[gtk4::gio::File], _: &str) {
                                     ui_async.spinner.stop();
                                     ui_async.spinner.set_visible(false);
                                     ui_async.status_label.set_text(&tr("STATUS_FINISHED", None));
-
-                                    let result = get_files_in_range(
-                                        &lookup,
-                                        Utc.with_ymd_and_hms(2015, 1, 1, 0, 0, 0).unwrap(),
-                                        Utc.with_ymd_and_hms(2016, 1, 1, 0, 0, 0).unwrap(),
-                                    );
+                                    let bucket = TimeBucket::SeptemberLastYear;
+                                    let (start, end) = get_time_range(bucket);
+                                    let result = get_files_in_range(&lookup, start, end);
                                     tie_it_all_together(&result, &ui_async);
                                 });
                             }
