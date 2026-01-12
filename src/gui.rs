@@ -449,19 +449,35 @@ pub fn set_up_user_defaults(ui: &UserInterface) {
 // ##################### GRAPH FUNCTIONS ###############################
 // #####################################################################
 //
-/// Private helper to process and sort FIT data for visualization
-fn prepare_data(
-    results: &[(DateTime<Utc>, PathBuf)],
+//
+// Create a wrapper struct for the data we actually need
+pub struct PlottableData {
+    pub timestamp: DateTime<Utc>,
+    pub stats: SessionStats,
+}
+
+// Perform this ONCE in main.rs
+pub fn collect_all_stats(results: &[(DateTime<Utc>, PathBuf)]) -> Vec<PlottableData> {
+    results
+        .into_par_iter()
+        .map(|(ts, path)| PlottableData {
+            timestamp: *ts,
+            stats: extract_session_data(path).unwrap_or_default(),
+        })
+        .collect()
+}
+
+// Convert the above structure to plottable vectors
+pub fn get_metric_vec(
+    all_data: &[PlottableData],
     value_extractor: fn(&SessionStats) -> f64,
 ) -> Vec<(DateTime<Utc>, f64)> {
-    let mut data: Vec<(DateTime<Utc>, f64)> = results
-        .into_par_iter()
-        .map(|(ts, path)| {
-            let stats = extract_session_data(path).unwrap_or_default();
-            (*ts, value_extractor(&stats))
-        })
+    let mut data: Vec<(DateTime<Utc>, f64)> = all_data
+        .iter()
+        .map(|item| (item.timestamp, value_extractor(&item.stats)))
         .collect();
 
+    // Ensure chronological order for the LineSeries
     data.sort_by_key(|(ts, _)| *ts);
     data
 }
@@ -479,9 +495,6 @@ pub fn plot_session_metric(
         return Ok(());
     }
 
-    // 2. Set up the drawing area
-    // let root = BitMapBackend::new(file_name, (1024, 768)).into_drawing_area();
-
     let (start_date, end_date) = (plotvals.first().unwrap().0, plotvals.last().unwrap().0);
     let max_val = plotvals.iter().map(|(_, v)| *v).fold(0.0, f64::max) * 1.1;
 
@@ -490,9 +503,6 @@ pub fn plot_session_metric(
     if is_dark {
         caption_style = ("sans-serif", 16, &GREY_200).into_text_style(a);
     }
-    // .caption(format!("{}", metric_name), ("sans-serif", 16))
-
-    // 3. Build the chart
     let mut chart = ChartBuilder::on(&a)
         .caption(format!("{}", metric_name), caption_style)
         .margin(20)
@@ -542,13 +552,11 @@ pub fn plot_session_metric(
         .axis_style(axis_style)
         .draw()?;
 
-    // 4. Draw the Line Series
     chart.draw_series(LineSeries::new(
         plotvals.iter().map(|(date, val)| (*date, *val)),
         &color,
     ))?;
 
-    // 5. Draw Scatter Points
     chart.draw_series(
         plotvals
             .iter()
@@ -642,19 +650,19 @@ fn draw_graphs(
 // set-up the draw function callback.
 fn build_graphs(data: &Vec<(chrono::DateTime<chrono::Utc>, PathBuf)>, ui: &UserInterface) {
     // Need to clone to use inside the closure.
-    let data_clone = data.clone();
+    let stats = collect_all_stats(&data);
     let distance_plotvals: Vec<(DateTime<Utc>, f64)> =
-        prepare_data(&data_clone, |s| s.distance / 1000.0 * 0.621371);
+        get_metric_vec(&stats, |s| s.distance / 1000.0 * 0.621371);
     let calories_plotvals: Vec<(DateTime<Utc>, f64)> =
-        prepare_data(&data_clone, |s| s.calories as f64);
+        get_metric_vec(&stats, |s| s.calories as f64);
     let ascent_plotvals: Vec<(DateTime<Utc>, f64)> =
-        prepare_data(&data_clone, |s| s.ascent as f64 * 3.28084);
+        get_metric_vec(&stats, |s| s.ascent as f64 * 3.28084);
     let duration_plotvals: Vec<(DateTime<Utc>, f64)> =
-        prepare_data(&data_clone, |s| s.duration / 60.0);
+        get_metric_vec(&stats, |s| s.duration / 60.0);
     let speed_plotvals: Vec<(DateTime<Utc>, f64)> =
-        prepare_data(&data_clone, |s| s.enhanced_speed * 2.23694);
+        get_metric_vec(&stats, |s| s.enhanced_speed * 2.23694);
     let descent_plotvals: Vec<(DateTime<Utc>, f64)> =
-        prepare_data(&data_clone, |s| s.descent as f64 * 3.28084);
+        get_metric_vec(&stats, |s| s.descent as f64 * 3.28084);
     ui.da
         .set_draw_func(clone!(move |_drawing_area, cr, width, height| {
             draw_graphs(

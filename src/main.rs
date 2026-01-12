@@ -125,11 +125,12 @@ fn build_gui(app: &Application, _files: &[gtk4::gio::File], _: &str) {
         ui1,
         move |_, _| {
             let target_dir = "/home/craig/Documents/garmin/";
+            // let now = std::time::Instant::now();
             let lookup = process_fit_directory(target_dir);
+            // println!("{} - process directory", now.elapsed().as_secs());
 
             let start_date = Utc.with_ymd_and_hms(2025, 7, 1, 0, 0, 0).unwrap();
             let end_date = Utc.with_ymd_and_hms(2025, 12, 31, 23, 59, 59).unwrap();
-
             let result = get_files_in_range(&lookup, start_date, end_date);
 
             // Print the list of activities and their distances
