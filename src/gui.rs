@@ -280,7 +280,7 @@ pub fn instantiate_ui(app: &Application) -> UserInterface {
     button_content.set_halign(gtk4::Align::Center);
     // "document-open" is a standard Freedesktop icon name.
     let icon = Image::from_icon_name("document-open");
-    let label = Label::new(Some(&tr("PROCESS_BUTTON_LABEL", None)));
+    let label = Label::new(Some(&tr("SELECT_DIR_TITLE", None)));
     button_content.append(&icon);
     button_content.append(&label);
     ui.btn.set_child(Some(&button_content));

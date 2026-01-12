@@ -125,37 +125,60 @@ fn build_gui(app: &Application, _files: &[gtk4::gio::File], _: &str) {
         #[strong]
         ui1,
         move |_, _| {
-            // Get the default main context
-            let main_context = glib::MainContext::default();
-            let ui2 = ui1.clone();
-            ui2.spinner.set_visible(true);
-            ui2.spinner.start();
-            ui2.status_label.set_text("Processing");
-            // Spawn a local future on the main thread
-            main_context.spawn_local(async move {
-                // 1. Offload the heavy work to the system thread pool (Rayon/Glib)
-                // This is where the "Not Responding" fix happens
-                let lookup = spawn_blocking(move || {
-                    // This runs in a background thread
-                    process_fit_directory("/home/craig/Documents/garmin/")
-                })
-                .await
-                .expect("The background thread panicked");
+            // FileChooserNative works on older GTK4 versions and native OS portals
+            let chooser = gtk4::FileChooserNative::new(
+                Some(&tr("SELECT_DIR_TITLE", None)),
+                Some(&ui1.win),
+                gtk4::FileChooserAction::SelectFolder,
+                Some(&tr("SELECT_DIR_BUTTON", None)),
+                Some(&tr("CANCEL_BUTTON", None)),
+            );
 
-                // 2. Back on the main thread: Update the UI
-                let start_date = Utc.with_ymd_and_hms(2015, 7, 1, 0, 0, 0).unwrap();
-                let end_date = Utc.with_ymd_and_hms(2016, 12, 31, 23, 59, 59).unwrap();
-                let result = get_files_in_range(&lookup, start_date, end_date);
-                ui2.spinner.set_visible(false);
-                ui2.spinner.stop();
-                // Print the list of activities and their distances
-                // print_activity_summaries(&result);
-                tie_it_all_together(&result, &ui2);
-                ui2.status_label.set_text("Finished!");
-            });
-        },
-    )); //open action
+            chooser.connect_response(clone!(
+                #[strong]
+                ui1,
+                move |chooser, response| {
+                    if response == gtk4::ResponseType::Accept {
+                        if let Some(file) = chooser.file() {
+                            if let Some(path) = file.path() {
+                                let target_dir = path;
+                                let ui_async = ui1.clone();
 
+                                // UI Feedback
+                                ui_async.spinner.set_visible(true);
+                                ui_async.spinner.start();
+                                ui_async
+                                    .status_label
+                                    .set_text(&tr("STATUS_PROCESSING", None));
+
+                                glib::MainContext::default().spawn_local(async move {
+                                    let lookup =
+                                        spawn_blocking(move || process_fit_directory(&target_dir))
+                                            .await
+                                            .expect("Worker thread panicked");
+
+                                    // Reset Spinner
+                                    ui_async.spinner.stop();
+                                    ui_async.spinner.set_visible(false);
+                                    ui_async.status_label.set_text(&tr("STATUS_FINISHED", None));
+
+                                    let result = get_files_in_range(
+                                        &lookup,
+                                        Utc.with_ymd_and_hms(2015, 1, 1, 0, 0, 0).unwrap(),
+                                        Utc.with_ymd_and_hms(2016, 1, 1, 0, 0, 0).unwrap(),
+                                    );
+                                    tie_it_all_together(&result, &ui_async);
+                                });
+                            }
+                        }
+                    }
+                    chooser.destroy(); // Clean up the dialog
+                }
+            ));
+
+            chooser.show();
+        }
+    ));
     // Connect the action to the widget and the shortcut key.
     app.add_action(&open_action);
     ui1.btn.set_action_name(Some("app.open"));

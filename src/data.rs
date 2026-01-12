@@ -99,7 +99,8 @@ pub fn get_files_in_range(
         .collect()
 }
 
-pub fn process_fit_directory(dir: &str) -> Arc<DashMap<DateTime<Utc>, PathBuf>> {
+pub fn process_fit_directory(pathbuf: &PathBuf) -> Arc<DashMap<DateTime<Utc>, PathBuf>> {
+    let dir = pathbuf.to_str().unwrap();
     let map = Arc::new(DashMap::new());
     let paths: Vec<PathBuf> = WalkDir::new(dir)
         .into_iter()
