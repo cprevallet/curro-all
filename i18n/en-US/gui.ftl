@@ -122,3 +122,21 @@ PRETTY_ENHANCED_MAX_SPEED =  Fastest pace
 PRETTY_MIN_TEMPERATURE = Minimum temperature
 PRETTY_MAX_TEMPERATURE = Maximum temperature
 PRETTY_AVG_TEMPERATURE = Average temperature
+
+JANUARY = January
+FEBRUARY = February
+MARCH = March
+APRIL = April
+MAY = May
+JUNE = June
+JULY = July
+AUGUST = August
+SEPTEMBER = September
+OCTOBER = October
+NOVEMBER = November
+DECEMBER = December
+
+ONE_WEEK = One week
+TWO_WEEKS = Two weeks
+THREE_WEEKS = Three weeks
+FOUR_WEEKS = Four weeks

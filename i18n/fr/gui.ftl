@@ -120,3 +120,21 @@ PRETTY_ENHANCED_MAX_SPEED =  Rythme le plus rapide
 PRETTY_MIN_TEMPERATURE = Température minimale
 PRETTY_MAX_TEMPERATURE = Température maximale
 PRETTY_AVG_TEMPERATURE = Température moyenne
+
+JANUARY = Janvier
+FEBRUARY = Février
+MARCH = Mars
+APRIL = Avril
+MAY =Mai
+JUNE = Juin
+JULY = Juillet
+AUGUST = Août
+SEPTEMBER = Septembre
+OCTOBER = Octobre
+NOVEMBER = Novembre
+DECEMBER = Décembre
+
+ONE_WEEK = Dernière semaine
+TWO_WEEKS = Dernières 2 semaines
+THREE_WEEKS = Dernières 3 semaines
+FOUR_WEEKS = Dernières 4 semaines

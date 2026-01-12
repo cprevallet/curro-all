@@ -1,11 +1,6 @@
 // User interface logic - setup, drawing, formatting.
 
 use crate::config::{ICON_NAME, PROGRAM_NAME, SETTINGSFILE, Units, load_config};
-// use crate::data::{
-//     GraphAttributes, GraphCache, MapCache, cvt_altitude, cvt_distance, cvt_elapsed_time, cvt_pace,
-//     cvt_temperature, get_run_start_date, get_sess_record_field, get_time_in_zone_field,
-//     get_timestamps, get_xy, is_american_thanksgiving, is_easter, semi_to_degrees, set_plot_range,
-// };
 use crate::i18n::tr;
 use directories::BaseDirs;
 use gtk4::cairo::Context;
@@ -30,7 +25,7 @@ use rayon::prelude::*;
 use std::path::PathBuf;
 
 // Import types from our data module
-use crate::data::{SessionStats, extract_session_data};
+use crate::data::{SessionStats, TimeBucket, extract_session_data};
 
 // #####################################################################
 // ##################### OVERALL UI FUNCTIONS ##########################
@@ -105,6 +100,7 @@ pub struct UserInterface {
     pub menu_button: gtk4::MenuButton,
     pub popover: gtk4::Popover,
     pub spinner: Spinner,
+    pub time_widget: DropDown,
     pub status_label: Label,
     pub menu_box: gtk4::Box,
     pub outer_box: gtk4::Box,
@@ -150,6 +146,14 @@ pub fn instantiate_ui(app: &Application) -> UserInterface {
             .valign(gtk4::Align::Center)
             .halign(gtk4::Align::Center)
             .visible(false)
+            .build(),
+        time_widget: DropDown::builder()
+            .margin_top(5)
+            .margin_bottom(5)
+            .margin_start(5)
+            .margin_end(5)
+            .height_request(30)
+            .width_request(100)
             .build(),
         status_label: Label::new(Some("")),
         menu_box: gtk4::Box::builder()
@@ -291,6 +295,11 @@ pub fn instantiate_ui(app: &Application) -> UserInterface {
         .set_tooltip_text(Some(&tr("TOOLTIP_UNITS_DROPDOWN", None)));
     ui.win.set_icon_name(Some(ICON_NAME));
     ui.win.set_content(Some(&ui.outer_box));
+    let variants = TimeBucket::all_variants();
+    let labels: Vec<String> = variants.iter().map(|v| v.get_label()).collect();
+    let string_list = gtk4::StringList::new(&labels.iter().map(|s| s.as_str()).collect::<Vec<_>>());
+    ui.time_widget.set_model(Some(&string_list));
+    ui.button_box.append(&ui.time_widget);
     ui.button_box.append(&ui.btn);
     ui.button_box.append(&ui.spinner);
     ui.button_box.append(&ui.status_label);

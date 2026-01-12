@@ -1,3 +1,4 @@
+use crate::i18n::tr;
 use chrono::{DateTime, Datelike, Duration, TimeZone, Utc};
 use dashmap::DashMap;
 use rayon::prelude::*;
@@ -264,6 +265,84 @@ pub fn get_time_range(bucket: TimeBucket) -> (DateTime<Utc>, DateTime<Utc>) {
             };
 
             (start_ts, end_ts)
+        }
+    }
+}
+impl TimeBucket {
+    // This provides the labels for the DropDown
+    pub fn all_variants() -> &'static [TimeBucket] {
+        use TimeBucket::*;
+        &[
+            OneWeek,
+            TwoWeeks,
+            ThreeWeeks,
+            FourWeeks,
+            JanuaryThisYear,
+            FebruaryThisYear,
+            MarchThisYear,
+            AprilThisYear,
+            MayThisYear,
+            JuneThisYear,
+            JulyThisYear,
+            AugustThisYear,
+            SeptemberThisYear,
+            OctoberThisYear,
+            NovemberThisYear,
+            DecemberThisYear,
+            JanuaryLastYear,
+            FebruaryLastYear,
+            MarchLastYear,
+            AprilLastYear,
+            MayLastYear,
+            JuneLastYear,
+            JulyLastYear,
+            AugustLastYear,
+            SeptemberLastYear,
+            OctoberLastYear,
+            NovemberLastYear,
+            DecemberLastYear,
+        ]
+    }
+
+    pub fn get_label(&self) -> String {
+        let now = Utc::now();
+        let this_year = now.year();
+        let last_year = this_year - 1;
+
+        match self {
+            // Weekly Variants
+            TimeBucket::OneWeek => tr("ONE_WEEK", None),
+            TimeBucket::TwoWeeks => tr("TWO_WEEKS", None),
+            TimeBucket::ThreeWeeks => tr("THREE_WEEKS", None),
+            TimeBucket::FourWeeks => tr("FOUR_WEEKS", None),
+
+            // This Year Variants
+            TimeBucket::JanuaryThisYear => format!("{} {}", tr("JANUARY", None), this_year),
+            TimeBucket::FebruaryThisYear => format!("{} {}", tr("FEBRUARY", None), this_year),
+            TimeBucket::MarchThisYear => format!("{} {}", tr("MARCH", None), this_year),
+            TimeBucket::AprilThisYear => format!("{} {}", tr("APRIL", None), this_year),
+            TimeBucket::MayThisYear => format!("{} {}", tr("MAY", None), this_year),
+            TimeBucket::JuneThisYear => format!("{} {}", tr("JUNE", None), this_year),
+            TimeBucket::JulyThisYear => format!("{} {}", tr("JULY", None), this_year),
+            TimeBucket::AugustThisYear => format!("{} {}", tr("AUGUST", None), this_year),
+            TimeBucket::SeptemberThisYear => format!("{} {}", tr("SEPTEMBER", None), this_year),
+            TimeBucket::OctoberThisYear => format!("{} {}", tr("OCTOBER", None), this_year),
+            TimeBucket::NovemberThisYear => format!("{} {}", tr("NOVEMBER", None), this_year),
+            TimeBucket::DecemberThisYear => format!("{} {}", tr("DECEMBER", None), this_year),
+
+            // Last Year Variants
+            TimeBucket::JanuaryLastYear => format!("{} {}", tr("JANUARY", None), last_year),
+            TimeBucket::FebruaryLastYear => format!("{} {}", tr("FEBRUARY", None), last_year),
+            TimeBucket::MarchLastYear => format!("{} {}", tr("MARCH", None), last_year),
+            TimeBucket::AprilLastYear => format!("{} {}", tr("APRIL", None), last_year),
+            TimeBucket::MayLastYear => format!("{} {}", tr("MAY", None), last_year),
+            TimeBucket::JuneLastYear => format!("{} {}", tr("JUNE", None), last_year),
+            TimeBucket::JulyLastYear => format!("{} {}", tr("JULY", None), last_year),
+            TimeBucket::AugustLastYear => format!("{} {}", tr("AUGUST", None), last_year),
+            TimeBucket::SeptemberLastYear => format!("{} {}", tr("SEPTEMBER", None), last_year),
+            TimeBucket::OctoberLastYear => format!("{} {}", tr("OCTOBER", None), last_year),
+            TimeBucket::NovemberLastYear => format!("{} {}", tr("NOVEMBER", None), last_year),
+            TimeBucket::DecemberLastYear => format!("{} {}", tr("DECEMBER", None), last_year),
         }
     }
 }
