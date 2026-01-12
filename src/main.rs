@@ -32,6 +32,7 @@ use crate::config::{
     APP_ID, ARTIST1, AUTHOR, COPYRIGHT, ICON_NAME, PROGRAM_NAME, TESTER1, TESTER2, TESTER3,
     WindowConfig, save_config,
 };
+use crate::gio::spawn_blocking;
 use crate::gui::{
     UserInterface, connect_interactive_widgets, construct_views_from_data, instantiate_ui,
 };
@@ -124,18 +125,33 @@ fn build_gui(app: &Application, _files: &[gtk4::gio::File], _: &str) {
         #[strong]
         ui1,
         move |_, _| {
-            let target_dir = "/home/craig/Documents/garmin/";
-            // let now = std::time::Instant::now();
-            let lookup = process_fit_directory(target_dir);
-            // println!("{} - process directory", now.elapsed().as_secs());
+            // Get the default main context
+            let main_context = glib::MainContext::default();
+            let ui2 = ui1.clone();
+            ui2.spinner.set_visible(true);
+            ui2.spinner.start();
+            // Spawn a local future on the main thread
+            main_context.spawn_local(async move {
+                // 1. Offload the heavy work to the system thread pool (Rayon/Glib)
+                // This is where the "Not Responding" fix happens
+                let lookup = spawn_blocking(move || {
+                    // This runs in a background thread
+                    process_fit_directory("/home/craig/Documents/garmin/")
+                })
+                .await
+                .expect("The background thread panicked");
 
-            let start_date = Utc.with_ymd_and_hms(2025, 7, 1, 0, 0, 0).unwrap();
-            let end_date = Utc.with_ymd_and_hms(2025, 12, 31, 23, 59, 59).unwrap();
-            let result = get_files_in_range(&lookup, start_date, end_date);
-
-            // Print the list of activities and their distances
-            // print_activity_summaries(&result);
-            tie_it_all_together(&result, &ui1);
+                // 2. Back on the main thread: Update the UI
+                let start_date = Utc.with_ymd_and_hms(2015, 7, 1, 0, 0, 0).unwrap();
+                let end_date = Utc.with_ymd_and_hms(2016, 12, 31, 23, 59, 59).unwrap();
+                let result = get_files_in_range(&lookup, start_date, end_date);
+                ui2.spinner.set_visible(false);
+                ui2.spinner.stop();
+                // Print the list of activities and their distances
+                // print_activity_summaries(&result);
+                tie_it_all_together(&result, &ui2);
+                // ui.status_label.set_text("Finished!");
+            });
         },
     )); //open action
 

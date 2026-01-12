@@ -14,8 +14,8 @@ use gtk4::glib::clone;
 use gtk4::prelude::*;
 use gtk4::{
     Adjustment, Button, DrawingArea, DropDown, Frame, HeaderBar, Image, Label, MenuButton,
-    Orientation, Overlay, Popover, ScrolledWindow, StringList, StringObject, TextBuffer, TextView,
-    gdk,
+    Orientation, Overlay, Popover, ScrolledWindow, Spinner, StringList, StringObject, TextBuffer,
+    TextView, gdk,
 };
 use libadwaita::prelude::*;
 use libadwaita::{Application, ApplicationWindow, StyleManager, WindowTitle};
@@ -104,6 +104,7 @@ pub struct UserInterface {
     pub header_bar: HeaderBar,
     pub menu_button: gtk4::MenuButton,
     pub popover: gtk4::Popover,
+    pub spinner: Spinner,
     pub menu_box: gtk4::Box,
     pub outer_box: gtk4::Box,
     pub button_box: gtk4::Box,
@@ -144,6 +145,11 @@ pub fn instantiate_ui(app: &Application) -> UserInterface {
             .icon_name("open-menu-symbolic")
             .build(),
         popover: Popover::builder().build(),
+        spinner: Spinner::builder()
+            .valign(gtk4::Align::Center)
+            .halign(gtk4::Align::Center)
+            .visible(false)
+            .build(),
         menu_box: gtk4::Box::builder()
             .orientation(Orientation::Vertical)
             .spacing(10)
@@ -272,7 +278,7 @@ pub fn instantiate_ui(app: &Application) -> UserInterface {
     button_content.set_halign(gtk4::Align::Center);
     // "document-open" is a standard Freedesktop icon name.
     let icon = Image::from_icon_name("document-open");
-    let label = Label::new(Some(&tr("OPEN_FILE_BUTTON_LABEL", None)));
+    let label = Label::new(Some(&tr("PROCESS_BUTTON_LABEL", None)));
     button_content.append(&icon);
     button_content.append(&label);
     ui.btn.set_child(Some(&button_content));
@@ -284,6 +290,7 @@ pub fn instantiate_ui(app: &Application) -> UserInterface {
     ui.win.set_icon_name(Some(ICON_NAME));
     ui.win.set_content(Some(&ui.outer_box));
     ui.button_box.append(&ui.btn);
+    ui.button_box.append(&ui.spinner);
     ui.button_box.append(&ui.controls_box);
     ui.y_zoom_box = create_arrow_controls(&ui.y_zoom_adj);
     ui.y_zoom_box
@@ -324,10 +331,9 @@ pub fn construct_views_from_data(
     // 2. Connect embedded widgets to their parents.
     ui.da_window.set_child(Some(&ui.overlay));
     ui.frame_right.set_child(Some(&ui.da_window));
-    // ui.frame_left.set_child(Some(&ui.logo_overlay));
+    ui.frame_left.set_child(Some(&ui.scrolled_window));
     // 3. Configure the widget layout.
     ui.left_frame_pane.set_start_child(Some(&ui.frame_left));
-    ui.left_frame_pane.set_end_child(Some(&ui.scrolled_window));
     ui.right_frame_pane.set_start_child(Some(&ui.frame_right));
     // Main box contains all of the above plus the graphs.
     ui.main_pane.set_start_child(Some(&ui.left_frame_pane));
