@@ -692,39 +692,40 @@ fn update_map_graph_and_summary_widgets(
 // #####################################################################
 // ##################### SUMMARY FUNCTIONS #############################
 // #####################################################################
-
-// Build a summary.
+// Build a summary using the PlottableData struct
 fn build_summary(data: &Vec<(chrono::DateTime<chrono::Utc>, PathBuf)>, ui: &UserInterface) {
-    // // Get the enumerated value for the unit system the user selected.
-    // let user_unit = get_unit_system(&ui.units_widget);
-    // // Clear out anything in the buffer.
+    // 1. Clear out the existing buffer
     let mut start = ui.text_buffer.start_iter();
     let mut end = ui.text_buffer.end_iter();
     ui.text_buffer.delete(&mut start, &mut end);
-    let output_str = format!(
-        "{:<25} | {:<8} | {:<5} | {:<7} | {:<7} | {:<7} | {:<7}",
-        "Date & Time", "Dist(mi)", "Cal", "Time", "mph", "Asc(ft)", "Des(ft)\n"
+
+    // 2. Insert Table Header
+    let header = format!(
+        "{:<25} | {:<8} | {:<5} | {:<7} | {:<7} | {:<7} | {:<7}\n",
+        "Date & Time", "Dist(mi)", "Cal", "Time", "mph", "Asc(ft)", "Des(ft)"
     );
-    ui.text_buffer.insert(&mut end, &output_str);
-    let output_str = format!("{:-<95}\n", "");
-    ui.text_buffer.insert(&mut end, &output_str);
+    ui.text_buffer.insert(&mut end, &header);
+    ui.text_buffer.insert(&mut end, &format!("{:-<95}\n", ""));
 
-    let mut summaries: Vec<(DateTime<Utc>, SessionStats)> = data
-        .into_par_iter()
-        .map(|(ts, path)| (*ts, extract_session_data(path).unwrap_or_default()))
-        .collect();
+    // 3. Collect all stats into the PlottableData struct (Parse Once)
+    let mut plottable_collection = collect_all_stats(data);
 
-    summaries.sort_by_key(|(ts, _)| *ts);
+    // 4. Sort by timestamp to ensure chronological order in the text view
+    plottable_collection.sort_by_key(|item| item.timestamp);
 
-    for (ts, stats) in summaries {
-        // Conversions
+    // 5. Iterate through the collection and format the strings
+    for item in plottable_collection {
+        let ts = item.timestamp;
+        let stats = item.stats;
+
+        // Perform unit conversions
         let miles = stats.distance / 1000.0 * 0.621371;
-        let mph = stats.enhanced_speed * 2.23694; // m/s to mph
+        let mph = stats.enhanced_speed * 2.23694;
         let ascent_ft = stats.ascent as f64 * 3.28084;
         let descent_ft = stats.descent as f64 * 3.28084;
         let mins = stats.duration / 60.0;
 
-        let output_str = format!(
+        let row = format!(
             "{:<25} | {:>8.2} | {:>5} | {:>6.1}m | {:>7.1} | {:>7.0} | {:>7.0}\n",
             ts.format("%Y-%m-%d").to_string(),
             miles,
@@ -734,6 +735,9 @@ fn build_summary(data: &Vec<(chrono::DateTime<chrono::Utc>, PathBuf)>, ui: &User
             ascent_ft,
             descent_ft
         );
-        ui.text_buffer.insert(&mut end, &output_str);
+
+        // Re-calculate end iterator to ensure we append to the bottom
+        let mut end_iter = ui.text_buffer.end_iter();
+        ui.text_buffer.insert(&mut end_iter, &row);
     }
 }

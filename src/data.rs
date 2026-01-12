@@ -1,8 +1,9 @@
-use chrono::{DateTime, Utc};
+use chrono::{DateTime, TimeZone, Utc};
 use dashmap::DashMap;
 use rayon::prelude::*;
 use std::fs::File;
 use std::io::Read;
+use std::io::{BufReader, Seek, SeekFrom};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use walkdir::WalkDir;
@@ -116,6 +117,9 @@ pub fn process_fit_directory(dir: &str) -> Arc<DashMap<DateTime<Utc>, PathBuf>> 
 
     paths.into_par_iter().for_each(|path| {
         if let Ok(ts) = extract_timestamp_fast(&path) {
+            //   This is WAY faster but we seem to be missing some test cases.
+            //  TODO Need to investigate.
+            // if let Ok(ts) = extract_timestamp_bit_level(&path) {
             map.insert(ts, path);
         }
     });
@@ -149,3 +153,49 @@ fn find_ts_in_vec(
     }
     Err("Timestamp not found".into())
 }
+
+// This is buggy - seems to be missing some valid files picked up with the other approach.
+// Extracts the timestamp by manually parsing the binary File ID message.
+// This avoids the overhead of a full FIT parser.
+// pub fn extract_timestamp_bit_level(
+//     path: &Path,
+// ) -> Result<DateTime<Utc>, Box<dyn std::error::Error + Send + Sync>> {
+//     let file = File::open(path)?;
+//     let mut reader = BufReader::new(file);
+
+//     // 1. Read Header Size (First byte)
+//     let mut header_size_buf = [0u8; 1];
+//     reader.read_exact(&mut header_size_buf)?;
+//     let header_size = header_size_buf[0];
+
+//     // 2. Skip to the start of Data Records
+//     reader.seek(SeekFrom::Start(header_size as u64))?;
+
+//     // 3. Parse Record Header
+//     // Most Garmin File ID messages use a "Normal Header" (bit 7 is 0)
+//     let mut record_header = [0u8; 1];
+//     reader.read_exact(&mut record_header)?;
+
+//     // 4. Look for the File ID message
+//     // In the FIT protocol, the first message is almost always the File ID (Global ID 0).
+//     // It contains the 'time_created' field at a specific offset.
+//     // We expect a Definition Message (bit 6 set) or a Data Message.
+
+//     // For extreme speed, we can search for the first Timestamp (u32)
+//     // that looks like a valid Garmin date (seconds since 1989-12-31).
+//     let mut buffer = [0u8; 128];
+//     reader.read_exact(&mut buffer)?;
+
+//     for i in 0..(buffer.len() - 4) {
+//         let val = u32::from_le_bytes([buffer[i], buffer[i + 1], buffer[i + 2], buffer[i + 3]]);
+
+//         // Garmin timestamps are seconds since UTC 00:00:00 Dec 31, 1989.
+//         // A timestamp of ~1.1 billion represents late 2024/2025.
+//         if val > 1_000_000_000 && val < 1_500_000_000 {
+//             let unix_ts = val as i64 + 631_065_600; // Offset to Unix Epoch
+//             return Ok(Utc.timestamp_opt(unix_ts, 0).unwrap());
+//         }
+//     }
+
+//     Err("Could not find valid timestamp in bitstream".into())
+// }
