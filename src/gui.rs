@@ -105,6 +105,7 @@ pub struct UserInterface {
     pub menu_button: gtk4::MenuButton,
     pub popover: gtk4::Popover,
     pub spinner: Spinner,
+    pub status_label: Label,
     pub menu_box: gtk4::Box,
     pub outer_box: gtk4::Box,
     pub button_box: gtk4::Box,
@@ -150,6 +151,7 @@ pub fn instantiate_ui(app: &Application) -> UserInterface {
             .halign(gtk4::Align::Center)
             .visible(false)
             .build(),
+        status_label: Label::new(Some("")),
         menu_box: gtk4::Box::builder()
             .orientation(Orientation::Vertical)
             .spacing(10)
@@ -291,6 +293,7 @@ pub fn instantiate_ui(app: &Application) -> UserInterface {
     ui.win.set_content(Some(&ui.outer_box));
     ui.button_box.append(&ui.btn);
     ui.button_box.append(&ui.spinner);
+    ui.button_box.append(&ui.status_label);
     ui.button_box.append(&ui.controls_box);
     ui.y_zoom_box = create_arrow_controls(&ui.y_zoom_adj);
     ui.y_zoom_box

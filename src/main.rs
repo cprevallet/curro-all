@@ -130,6 +130,7 @@ fn build_gui(app: &Application, _files: &[gtk4::gio::File], _: &str) {
             let ui2 = ui1.clone();
             ui2.spinner.set_visible(true);
             ui2.spinner.start();
+            ui2.status_label.set_text("Processing");
             // Spawn a local future on the main thread
             main_context.spawn_local(async move {
                 // 1. Offload the heavy work to the system thread pool (Rayon/Glib)
@@ -150,7 +151,7 @@ fn build_gui(app: &Application, _files: &[gtk4::gio::File], _: &str) {
                 // Print the list of activities and their distances
                 // print_activity_summaries(&result);
                 tie_it_all_together(&result, &ui2);
-                // ui.status_label.set_text("Finished!");
+                ui2.status_label.set_text("Finished!");
             });
         },
     )); //open action
