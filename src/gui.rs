@@ -680,17 +680,15 @@ fn draw_graphs(
 fn build_graphs(stats: &Vec<PlottableData>, ui: &UserInterface) {
     // Need to clone to use inside the closure.
     let distance_plotvals: Vec<(DateTime<Utc>, f64)> =
-        get_metric_vec(&stats, |s| s.distance / 1000.0 * 0.621371);
+        get_metric_vec(&stats, |s| s.distance as f64);
     let calories_plotvals: Vec<(DateTime<Utc>, f64)> =
         get_metric_vec(&stats, |s| s.calories as f64);
-    let ascent_plotvals: Vec<(DateTime<Utc>, f64)> =
-        get_metric_vec(&stats, |s| s.ascent as f64 * 3.28084);
+    let ascent_plotvals: Vec<(DateTime<Utc>, f64)> = get_metric_vec(&stats, |s| s.ascent as f64);
     let duration_plotvals: Vec<(DateTime<Utc>, f64)> =
-        get_metric_vec(&stats, |s| s.duration / 60.0);
+        get_metric_vec(&stats, |s| s.duration as f64);
     let speed_plotvals: Vec<(DateTime<Utc>, f64)> =
-        get_metric_vec(&stats, |s| s.enhanced_speed * 2.23694);
-    let descent_plotvals: Vec<(DateTime<Utc>, f64)> =
-        get_metric_vec(&stats, |s| s.descent as f64 * 3.28084);
+        get_metric_vec(&stats, |s| s.enhanced_speed as f64);
+    let descent_plotvals: Vec<(DateTime<Utc>, f64)> = get_metric_vec(&stats, |s| s.descent as f64);
     ui.da
         .set_draw_func(clone!(move |_drawing_area, cr, width, height| {
             draw_graphs(
@@ -749,22 +747,15 @@ fn build_summary(stat_collection: &Vec<PlottableData>, ui: &UserInterface) {
         let ts = item.timestamp;
         let stats = item.stats;
 
-        // Perform unit conversions
-        let miles = stats.distance / 1000.0 * 0.621371;
-        let mph = stats.enhanced_speed * 2.23694;
-        let ascent_ft = stats.ascent as f64 * 3.28084;
-        let descent_ft = stats.descent as f64 * 3.28084;
-        let mins = stats.duration / 60.0;
-
         let row = format!(
             "{:<25} | {:>8.2} | {:>5} | {:>6.1}m | {:>7.1} | {:>7.0} | {:>7.0}\n",
             ts.format("%Y-%m-%d").to_string(),
-            miles,
+            stats.distance,
             stats.calories,
-            mins,
-            mph,
-            ascent_ft,
-            descent_ft
+            stats.duration,
+            stats.enhanced_speed,
+            stats.ascent,
+            stats.descent
         );
 
         // Re-calculate end iterator to ensure we append to the bottom

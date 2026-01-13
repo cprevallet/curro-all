@@ -452,53 +452,25 @@ pub fn convert_session_data(
     stats: &SessionStats,
     selected_units: &Units,
 ) -> Result<SessionStats, Box<dyn std::error::Error + Send + Sync>> {
-    // let mut file = File::open(pathu    // let messages = fitparser::from_reader(&mut file)?;
-    // let mut stats = SessionStats::default();
+    let mut converted_stats = *stats;
 
-    // for message in messages     //     if message.kind() == fitparser::profile::field_types::MesgNum::Session {
-    //         for field in message.fields() {
-    //             match field.name() {
-    //                 "total_distance" => {
-    //                     stats.distance = match field.value() {
-    //                         fitparser::Value::Float32(v) => *v as f64,
-    //                         fitparser::Value::Float64(v) => *v,
-    //                         _ => 0.0,
-    //                     };
-    //                 }
-    //                 "total_calories" => {
-    //                     if let fitparser::Value::UInt16(v) = field.value() {
-    //                         stats.calories = *v;
-    //                     }
-    //                 }
-    //                 "total_elapsed_time" => {
-    //                     stats.duration = match field.value() {
-    //                         fitparser::Value::Float32(v) => *v as f64,
-    //                         fitparser::Value::Float64(v) => *v,
-    //                         _ => 0.0,
-    //                     };
-    //                 }
-    //                 "enhanced_avg_speed" => {
-    //                     stats.enhanced_speed = match field.value() {
-    //                         fitparser::Value::Float32(v) => *v as f64,
-    //                         fitparser::Value::Float64(v) => *v,
-    //                         _ => 0.0,
-    //                     };
-    //                 }
-    //                 "total_ascent" => {
-    //                     if let fitparser::Value::UInt16(v) = field.value() {
-    //                         stats.ascent = *v;
-    //                     }
-    //                 }
-    //                 "total_descent" => {
-    //                     if let fitparser::Value::UInt16(v) = field.value() {
-    //                         stats.descent = *v;
-    //                     }
-    //                 }
-    //                 _ => {}
-    //             }
-    //         }
-    //         return Ok(stats);
-    //     }
-    // }
-    Ok(*stats)
+    // Convert Distance (meters to miles/km)
+    converted_stats.distance = cvt_distance(stats.distance as f32, selected_units) as f64;
+
+    // Convert Ascent (meters to feet/m)
+    converted_stats.ascent = cvt_altitude(stats.ascent as f32, selected_units) as u16;
+
+    // Convert Descent (meters to feet/m)
+    converted_stats.descent = cvt_altitude(stats.descent as f32, selected_units) as u16;
+
+    // Convert Duration (seconds to minutes)
+    converted_stats.duration = stats.duration / 60.0 as f64;
+
+    converted_stats.enhanced_speed = cvt_pace(stats.enhanced_speed as f32, selected_units) as f64;
+
+    //Calories does not currently have cvt_ helpers
+    // defined for these specific units in data.rs, so they remain as-is
+    // or can be handled similarly if helpers are added.
+
+    Ok(converted_stats)
 }
