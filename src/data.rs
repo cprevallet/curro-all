@@ -8,6 +8,7 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use walkdir::WalkDir;
 
+#[derive(Debug, Clone, Copy)]
 pub struct SessionStats {
     pub distance: f64,
     pub calories: u16,

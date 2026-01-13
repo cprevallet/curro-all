@@ -6,7 +6,7 @@ use std::path::Path;
 
 // Meta-program info. Displayed in about dialog.
 pub const ICON_NAME: &str = "siliconsneaker2";
-pub const APP_ID: &str = "com.github.cprevallet.siliconsneaker2";
+pub const APP_ID: &str = "com.github.cprevallet.aggregate";
 pub const PROGRAM_NAME: &str = "Aggregate";
 pub const COPYRIGHT: &str = "© 2026";
 pub const AUTHOR: &str = "Craig S. Prevallet <penguintx@hotmail.com>";

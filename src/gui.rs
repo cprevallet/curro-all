@@ -474,6 +474,7 @@ pub fn set_up_user_defaults(ui: &UserInterface) {
 //
 //
 // Create a wrapper struct for the data we actually need
+#[derive(Debug, Clone, Copy)]
 pub struct PlottableData {
     pub timestamp: DateTime<Utc>,
     pub stats: SessionStats,
@@ -671,9 +672,8 @@ fn draw_graphs(
 
 // Build the graphs.  Prepare the graphical data for the drawing area and
 // set-up the draw function callback.
-fn build_graphs(data: &Vec<(chrono::DateTime<chrono::Utc>, PathBuf)>, ui: &UserInterface) {
+fn build_graphs(stats: &Vec<PlottableData>, ui: &UserInterface) {
     // Need to clone to use inside the closure.
-    let stats = collect_all_stats(&data);
     let distance_plotvals: Vec<(DateTime<Utc>, f64)> =
         get_metric_vec(&stats, |s| s.distance / 1000.0 * 0.621371);
     let calories_plotvals: Vec<(DateTime<Utc>, f64)> =
@@ -707,8 +707,9 @@ fn update_map_graph_and_summary_widgets(
     ui: &UserInterface,
     data: &Vec<(chrono::DateTime<chrono::Utc>, PathBuf)>,
 ) {
-    build_graphs(&data, &ui);
-    build_summary(&data, &ui);
+    let stat_collection = collect_all_stats(data);
+    build_graphs(&stat_collection, &ui);
+    build_summary(&stat_collection, &ui);
     return;
 }
 
@@ -716,7 +717,7 @@ fn update_map_graph_and_summary_widgets(
 // ##################### SUMMARY FUNCTIONS #############################
 // #####################################################################
 // Build a summary using the PlottableData struct
-fn build_summary(data: &Vec<(chrono::DateTime<chrono::Utc>, PathBuf)>, ui: &UserInterface) {
+fn build_summary(stat_collection: &Vec<PlottableData>, ui: &UserInterface) {
     // 1. Clear out the existing buffer
     let mut start = ui.text_buffer.start_iter();
     let mut end = ui.text_buffer.end_iter();
@@ -731,7 +732,7 @@ fn build_summary(data: &Vec<(chrono::DateTime<chrono::Utc>, PathBuf)>, ui: &User
     ui.text_buffer.insert(&mut end, &format!("{:-<95}\n", ""));
 
     // 3. Collect all stats into the PlottableData struct (Parse Once)
-    let mut plottable_collection = collect_all_stats(data);
+    let mut plottable_collection = stat_collection.clone();
 
     // 4. Sort by timestamp to ensure chronological order in the text view
     plottable_collection.sort_by_key(|item| item.timestamp);
