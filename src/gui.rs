@@ -1,6 +1,7 @@
 // User interface logic - setup, drawing, formatting.
 
 use crate::config::{ICON_NAME, PROGRAM_NAME, SETTINGSFILE, Units, load_config};
+use crate::data::PlottableData;
 use crate::i18n::tr;
 use dashmap::DashMap;
 use directories::BaseDirs;
@@ -440,7 +441,7 @@ pub fn connect_interactive_widgets(
 }
 
 // Return a unit enumeration from a units widget.
-pub fn _get_unit_system(units_widget: &DropDown) -> Units {
+pub fn get_unit_system(units_widget: &DropDown) -> Units {
     if units_widget.model().is_some() {
         let model = units_widget.model().unwrap();
         if let Some(item_obj) = model.item(units_widget.selected()) {
@@ -473,13 +474,6 @@ pub fn set_up_user_defaults(ui: &UserInterface) {
 // #####################################################################
 //
 //
-// Create a wrapper struct for the data we actually need
-#[derive(Debug, Clone, Copy)]
-pub struct PlottableData {
-    pub timestamp: DateTime<Utc>,
-    pub stats: SessionStats,
-}
-
 // Perform this ONCE in main.rs
 pub fn collect_all_stats(results: &[(DateTime<Utc>, PathBuf)]) -> Vec<PlottableData> {
     results
@@ -490,6 +484,17 @@ pub fn collect_all_stats(results: &[(DateTime<Utc>, PathBuf)]) -> Vec<PlottableD
         })
         .collect()
 }
+
+// pub fn convert_all_stats(stats: &Vec<PlottableData>, ui: &UserInterface) -> Vec<PlottableData> {
+//     let units = get_unit_system(&ui.units_widget);
+//     stats
+// .into_par_iter()
+// .map(|(ts, path)| PlottableData {
+//     timestamp: *ts,
+//     stats: extract_session_data(path).unwrap_or_default(),
+// })
+// .collect()
+// }
 
 // Convert the above structure to plottable vectors
 pub fn get_metric_vec(

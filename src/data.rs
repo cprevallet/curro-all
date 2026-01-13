@@ -1,3 +1,4 @@
+use crate::config::Units;
 use crate::i18n::tr;
 use chrono::{DateTime, Datelike, Duration, TimeZone, Utc};
 use dashmap::DashMap;
@@ -387,4 +388,62 @@ pub fn get_filtered_variants() -> Vec<TimeBucket> {
         .cloned()
         .collect();
     filtered_variants
+}
+// Convert speed (m/s) to pace(min/mile, min/km).
+pub fn cvt_pace(speed: f32, units: &Units) -> f32 {
+    match units {
+        Units::US => {
+            if speed < 1.00 {
+                return 26.8224; //avoid divide by zero
+            } else {
+                return 26.8224 / speed;
+            }
+        }
+        Units::Metric => {
+            if speed < 1.00 {
+                return 16.666667; //avoid divide by zero
+            } else {
+                return 16.666667 / speed;
+            }
+        }
+        Units::None => {
+            return speed;
+        }
+    }
+}
+
+// Convert distance meters to miles, km.
+pub fn cvt_distance(distance: f32, units: &Units) -> f32 {
+    match units {
+        Units::US => {
+            return distance * 0.00062137119;
+        }
+        Units::Metric => {
+            return distance * 0.001;
+        }
+        Units::None => {
+            return distance;
+        }
+    }
+}
+
+// Convert altitude meters to feet, m.
+pub fn cvt_altitude(altitude: f32, units: &Units) -> f32 {
+    match units {
+        Units::US => {
+            return altitude * 3.2808399;
+        }
+        Units::Metric => {
+            return altitude * 1.0;
+        }
+        Units::None => {
+            return altitude;
+        }
+    }
+}
+// Create a wrapper struct for the data we actually need
+#[derive(Debug, Clone, Copy)]
+pub struct PlottableData {
+    pub timestamp: DateTime<Utc>,
+    pub stats: SessionStats,
 }

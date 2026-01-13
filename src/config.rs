@@ -17,7 +17,7 @@ pub const TESTER3: &str = "Tony Castronovo";
 pub const SETTINGSFILE: &str = "siliconsneaker2_settings.toml";
 
 //Unit of measure system.
-#[allow(dead_code)]
+#[derive(Clone)]
 pub enum Units {
     Metric,
     US,
