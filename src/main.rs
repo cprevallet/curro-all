@@ -187,6 +187,24 @@ fn build_gui(app: &Application, _files: &[gtk4::gio::File], _: &str) {
     ui1.btn.set_action_name(Some("app.open"));
     app.set_accels_for_action("app.open", &["<Primary>o"]);
 
+    // Handle selection changes
+    ui1.time_widget.connect_selected_item_notify(clone!(
+        #[strong]
+        ui1,
+        move |dd| {
+            let index = dd.selected() as usize;
+            let selected_variant = &TimeBucket::all_variants()[index];
+
+            // 1. Get the date range
+            let (start_ts, end_ts) = get_time_range(selected_variant.clone());
+
+            let filtered_data = get_files_in_range(&ui1.lookup, start_ts, end_ts);
+
+            // 3. Update the view
+            tie_it_all_together(&filtered_data, &ui1);
+        }
+    ));
+
     let about_action = gio::SimpleAction::new("about", None);
     about_action.connect_activate(clone!(
         #[strong]
