@@ -363,29 +363,21 @@ pub fn construct_views_from_data(
 
 // Connect up the interactive widget handlers.
 pub fn connect_interactive_widgets(
-    _ui: &Rc<UserInterface>,
-    _data: &Vec<(chrono::DateTime<chrono::Utc>, PathBuf)>,
+    ui: &Rc<UserInterface>,
+    data: &Vec<(chrono::DateTime<chrono::Utc>, PathBuf)>,
 ) {
-    // // clone the Rc pointer for each independent closure that needs the data.
-    // let mc_rc_for_units = Rc::clone(&mc_rc);
-    // // Hook-up the units_widget change handler.
-    // // update everything when the unit system changes.
-    // ui.units_widget.connect_selected_notify(clone!(
-    //     #[strong]
-    //     data,
-    //     #[strong]
-    //     ui,
-    //     move |_| {
-    //         // Create a new graph cache due to unit change.
-    //         let graph_cache_units = instantiate_graph_cache(&data, &ui);
-    //         // Wrap the GraphCache in an Rc for shared ownership.
-    //         let gc_rc_for_units = Rc::new(graph_cache_units);
-    //         update_map_graph_and_summary_widgets(&ui, &data, &mc_rc_for_units, &gc_rc_for_units);
-    //         let curr_pos = ui.curr_pos_adj.clone();
-    //         // ui.map.queue_draw();
-    //         ui.da.queue_draw();
-    //     },
-    // ));
+    // Hook-up the units_widget change handler.
+    // update everything when the unit system changes.
+    ui.units_widget.connect_selected_notify(clone!(
+        #[strong]
+        data,
+        #[strong]
+        ui,
+        move |_| {
+            update_map_graph_and_summary_widgets(&ui, &data);
+            ui.da.queue_draw();
+        },
+    ));
 
     // // update the tiles when the map provider changes.
     // let mc_rc_for_tile = Rc::clone(&mc_rc);
@@ -653,14 +645,7 @@ fn draw_graphs(
     .unwrap();
 
     // Generate Average Speed Graph (MPH)
-    plot_session_metric(
-        &areas[4],
-        speed_plotvals.to_vec(),
-        "Average Speed",
-        "MPH",
-        &BROWN,
-    )
-    .unwrap();
+    plot_session_metric(&areas[4], speed_plotvals.to_vec(), "Pace", "Min/mi", &BROWN).unwrap();
 
     // Generate Descent Graph (Feet)
     plot_session_metric(
