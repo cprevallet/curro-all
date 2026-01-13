@@ -485,16 +485,16 @@ pub fn collect_all_stats(results: &[(DateTime<Utc>, PathBuf)]) -> Vec<PlottableD
         .collect()
 }
 
-// pub fn convert_all_stats(stats: &Vec<PlottableData>, ui: &UserInterface) -> Vec<PlottableData> {
-//     let units = get_unit_system(&ui.units_widget);
-//     stats
-// .into_par_iter()
-// .map(|(ts, path)| PlottableData {
-//     timestamp: *ts,
-//     stats: extract_session_data(path).unwrap_or_default(),
-// })
-// .collect()
-// }
+pub fn convert_all_stats(stats: &Vec<PlottableData>, _ui: &UserInterface) -> Vec<PlottableData> {
+    //     let units = get_unit_system(&ui.units_widget);
+    stats.to_vec()
+    // .into_par_iter()
+    // .map(|(ts, path)| PlottableData {
+    //     timestamp: *ts,
+    //     stats: extract_session_data(path).unwrap_or_default(),
+    // })
+    // .collect()
+}
 
 // Convert the above structure to plottable vectors
 pub fn get_metric_vec(
@@ -712,9 +712,11 @@ fn update_map_graph_and_summary_widgets(
     ui: &UserInterface,
     data: &Vec<(chrono::DateTime<chrono::Utc>, PathBuf)>,
 ) {
-    let stat_collection = collect_all_stats(data);
-    build_graphs(&stat_collection, &ui);
-    build_summary(&stat_collection, &ui);
+    let stats = collect_all_stats(data);
+    // units conversion
+    let ui_stats = convert_all_stats(&stats, &ui);
+    build_graphs(&ui_stats, &ui);
+    build_summary(&ui_stats, &ui);
     return;
 }
 
