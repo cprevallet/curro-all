@@ -485,9 +485,12 @@ pub fn collect_all_stats(results: &[(DateTime<Utc>, PathBuf)]) -> Vec<PlottableD
         .collect()
 }
 
-pub fn convert_all_stats(stats: &Vec<PlottableData>, _ui: &UserInterface) -> Vec<PlottableData> {
+pub fn convert_all_stats(
+    raw_stats: &Vec<PlottableData>,
+    _ui: &UserInterface,
+) -> Vec<PlottableData> {
     //     let units = get_unit_system(&ui.units_widget);
-    stats.to_vec()
+    raw_stats.to_vec()
     // .into_par_iter()
     // .map(|(ts, path)| PlottableData {
     //     timestamp: *ts,
