@@ -21,13 +21,12 @@ use plotters_cairo::CairoBackend;
 use std::path::Path;
 use std::rc::Rc;
 
-use chrono::{DateTime, Utc};
+use chrono::{DateTime, Datelike, Utc};
 use rayon::prelude::*;
-use std::collections::HashMap;
 use std::path::PathBuf;
 
 // Import types from our data module
-use crate::data::{SessionStats, TimeBucket, extract_session_data};
+use crate::data::{SessionStats, TimeBucket, extract_session_data, get_filtered_variants};
 
 // #####################################################################
 // ##################### OVERALL UI FUNCTIONS ##########################
@@ -299,8 +298,11 @@ pub fn instantiate_ui(app: &Application) -> UserInterface {
         .set_tooltip_text(Some(&tr("TOOLTIP_UNITS_DROPDOWN", None)));
     ui.win.set_icon_name(Some(ICON_NAME));
     ui.win.set_content(Some(&ui.outer_box));
-    let variants = TimeBucket::all_variants();
-    let labels: Vec<String> = variants.iter().map(|v| v.get_label()).collect();
+    // 3. Generate labels from the filtered set
+    let filtered_variants = get_filtered_variants();
+    let labels: Vec<String> = filtered_variants.iter().map(|v| v.get_label()).collect();
+
+    // 4. Create the DropDown with the filtered labels
     let string_list = gtk4::StringList::new(&labels.iter().map(|s| s.as_str()).collect::<Vec<_>>());
     ui.time_widget.set_model(Some(&string_list));
     ui.button_box.append(&ui.time_widget);

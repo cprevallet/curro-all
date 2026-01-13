@@ -152,7 +152,7 @@ fn find_ts_in_vec(
     }
     Err("Timestamp not found".into())
 }
-#[derive(Clone)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum TimeBucket {
     OneWeek,
     TwoWeeks,
@@ -347,4 +347,43 @@ impl TimeBucket {
             TimeBucket::DecemberLastYear => format!("{} {}", tr("DECEMBER", None), last_year),
         }
     }
+}
+
+pub fn get_filtered_variants() -> Vec<TimeBucket> {
+    // 1. Get current date info
+    let now = Utc::now();
+    let current_month = now.month();
+    let filtered_variants: Vec<TimeBucket> = TimeBucket::all_variants()
+        .iter()
+        .filter(|bucket| {
+            match bucket {
+                // Always keep weekly ranges and Last Year months
+                TimeBucket::OneWeek
+                | TimeBucket::TwoWeeks
+                | TimeBucket::ThreeWeeks
+                | TimeBucket::FourWeeks => true,
+
+                // Check specific variants for "Last Year" (always keep)
+                b if format!("{:?}", b).contains("LastYear") => true,
+
+                // Filter "This Year" months
+                TimeBucket::JanuaryThisYear => 1 <= current_month,
+                TimeBucket::FebruaryThisYear => 2 <= current_month,
+                TimeBucket::MarchThisYear => 3 <= current_month,
+                TimeBucket::AprilThisYear => 4 <= current_month,
+                TimeBucket::MayThisYear => 5 <= current_month,
+                TimeBucket::JuneThisYear => 6 <= current_month,
+                TimeBucket::JulyThisYear => 7 <= current_month,
+                TimeBucket::AugustThisYear => 8 <= current_month,
+                TimeBucket::SeptemberThisYear => 9 <= current_month,
+                TimeBucket::OctoberThisYear => 10 <= current_month,
+                TimeBucket::NovemberThisYear => 11 <= current_month,
+                TimeBucket::DecemberThisYear => 12 <= current_month,
+
+                _ => true, // Default fallback
+            }
+        })
+        .cloned()
+        .collect();
+    filtered_variants
 }

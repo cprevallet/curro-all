@@ -38,7 +38,9 @@ use crate::gui::{
 };
 use crate::i18n::tr;
 use dashmap::DashMap;
-use data::{TimeBucket, get_files_in_range, get_time_range, process_fit_directory};
+use data::{
+    TimeBucket, get_files_in_range, get_filtered_variants, get_time_range, process_fit_directory,
+};
 use gtk4::glib::clone;
 use gtk4::prelude::*;
 use gtk4::{ButtonsType, License, MessageDialog, MessageType, gio};
@@ -193,15 +195,14 @@ fn build_gui(app: &Application, _files: &[gtk4::gio::File], _: &str) {
         ui1,
         move |dd| {
             let index = dd.selected() as usize;
-            let selected_variant = &TimeBucket::all_variants()[index];
-
-            // 1. Get the date range
-            let (start_ts, end_ts) = get_time_range(selected_variant.clone());
-
-            let filtered_data = get_files_in_range(&ui1.lookup, start_ts, end_ts);
-
-            // 3. Update the view
-            tie_it_all_together(&filtered_data, &ui1);
+            let filtered_variants = get_filtered_variants();
+            if let Some(selected_variant) = filtered_variants.get(index) {
+                // 1. Get the date range
+                let (start_ts, end_ts) = get_time_range(selected_variant.clone());
+                let filtered_data = get_files_in_range(&ui1.lookup, start_ts, end_ts);
+                // 3. Update the view
+                tie_it_all_together(&filtered_data, &ui1);
+            }
         }
     ));
 
