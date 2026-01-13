@@ -21,12 +21,12 @@ use plotters_cairo::CairoBackend;
 use std::path::Path;
 use std::rc::Rc;
 
-use chrono::{DateTime, Datelike, Utc};
+use chrono::{DateTime, Utc};
 use rayon::prelude::*;
 use std::path::PathBuf;
 
 // Import types from our data module
-use crate::data::{SessionStats, TimeBucket, extract_session_data, get_filtered_variants};
+use crate::data::{SessionStats, extract_session_data, get_filtered_variants};
 
 // #####################################################################
 // ##################### OVERALL UI FUNCTIONS ##########################
@@ -156,6 +156,7 @@ pub fn instantiate_ui(app: &Application) -> UserInterface {
             .margin_end(5)
             .height_request(30)
             .width_request(100)
+            .visible(false)
             .build(),
         status_label: Label::new(Some("")),
         menu_box: gtk4::Box::builder()
@@ -298,17 +299,15 @@ pub fn instantiate_ui(app: &Application) -> UserInterface {
         .set_tooltip_text(Some(&tr("TOOLTIP_UNITS_DROPDOWN", None)));
     ui.win.set_icon_name(Some(ICON_NAME));
     ui.win.set_content(Some(&ui.outer_box));
-    // 3. Generate labels from the filtered set
+    // Create the string list used by the time_widget.
     let filtered_variants = get_filtered_variants();
     let labels: Vec<String> = filtered_variants.iter().map(|v| v.get_label()).collect();
-
-    // 4. Create the DropDown with the filtered labels
     let string_list = gtk4::StringList::new(&labels.iter().map(|s| s.as_str()).collect::<Vec<_>>());
     ui.time_widget.set_model(Some(&string_list));
-    ui.button_box.append(&ui.time_widget);
     ui.button_box.append(&ui.btn);
     ui.button_box.append(&ui.spinner);
     ui.button_box.append(&ui.status_label);
+    ui.button_box.append(&ui.time_widget);
     ui.button_box.append(&ui.controls_box);
     ui.y_zoom_box = create_arrow_controls(&ui.y_zoom_adj);
     ui.y_zoom_box

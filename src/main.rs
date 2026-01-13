@@ -37,7 +37,6 @@ use crate::gui::{
     UserInterface, connect_interactive_widgets, construct_views_from_data, instantiate_ui,
 };
 use crate::i18n::tr;
-use dashmap::DashMap;
 use data::{
     TimeBucket, get_files_in_range, get_filtered_variants, get_time_range, process_fit_directory,
 };
@@ -49,7 +48,6 @@ use semver::{BuildMetadata, Prerelease};
 use std::error::Error;
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
-use std::sync::Arc;
 
 // Only God and I knew what this was doing when I wrote it.
 // Now only God knows.
@@ -167,6 +165,7 @@ fn build_gui(app: &Application, _files: &[gtk4::gio::File], _: &str) {
                                     // Reset Spinner
                                     ui_async.spinner.stop();
                                     ui_async.spinner.set_visible(false);
+                                    ui_async.time_widget.set_visible(true);
                                     ui_async.status_label.set_text(&tr("STATUS_FINISHED", None));
                                     let index = ui_async.time_widget.selected() as usize;
                                     let selected_variant = &TimeBucket::all_variants()[index];
