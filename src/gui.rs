@@ -10,9 +10,8 @@ use gtk4::ffi::GTK_STYLE_PROVIDER_PRIORITY_APPLICATION;
 use gtk4::glib::clone;
 use gtk4::prelude::*;
 use gtk4::{
-    Adjustment, Button, DrawingArea, DropDown, Frame, HeaderBar, Image, Label, MenuButton,
-    Orientation, Overlay, Popover, ScrolledWindow, Spinner, StringList, StringObject, TextBuffer,
-    TextView, gdk,
+    Button, DrawingArea, DropDown, Frame, HeaderBar, Image, Label, MenuButton, Orientation,
+    Popover, ScrolledWindow, Spinner, StringList, StringObject, TextBuffer, TextView, gdk,
 };
 use libadwaita::prelude::*;
 use libadwaita::{Application, ApplicationWindow, StyleManager, WindowTitle};
@@ -33,67 +32,6 @@ use crate::data::{SessionStats, extract_session_data, get_filtered_variants};
 // ##################### OVERALL UI FUNCTIONS ##########################
 // #####################################################################
 //
-// Create arrow controls for the graph y-axis zoom.
-fn create_arrow_controls(adjustment: &Adjustment) -> gtk4::Box {
-    // 1. Create the container
-    let container = gtk4::Box::builder()
-        .orientation(Orientation::Vertical)
-        .width_request(30)
-        .margin_top(5)
-        .margin_bottom(5)
-        .margin_start(5)
-        .margin_end(5)
-        .css_name("arrow-controls")
-        .build();
-
-    // 2. Create the Up button
-    let up_button = Button::from_icon_name("list-add-symbolic");
-    up_button.set_width_request(10);
-    let adj_clone = adjustment.clone();
-    up_button.connect_clicked(move |_| {
-        let new_val = (adj_clone.value() + adj_clone.step_increment()).min(adj_clone.upper());
-        adj_clone.set_value(new_val);
-    });
-
-    // 3. Create the Down button
-    let down_button = Button::from_icon_name("list-remove-symbolic");
-    down_button.set_width_request(10);
-    let adj_clone = adjustment.clone();
-    down_button.connect_clicked(move |_| {
-        let new_val = (adj_clone.value() - adj_clone.step_increment()).max(adj_clone.lower());
-        adj_clone.set_value(new_val);
-    });
-
-    let provider = gtk4::CssProvider::new();
-    provider.load_from_data(
-        "
-    .arrow-controls {
-        opacity: 0.1; /* Almost hidden by default */
-        transition: opacity 0.5s ease-in-out; /* Smooth fade animation */
-        background-color: rgba(0, 0, 0, 0.4);
-        border-radius: 8px;
-        padding: 4px;
-    }
-
-    /* This class will be toggled by Rust code on hover */
-    .arrow-controls.visible {
-        opacity: 1.0;
-    }
-
-    .arrow-controls button {
-        background: transparent;
-        color: white;
-        border: none;
-    }
-",
-    );
-    // 4. Assemble
-    container.append(&up_button);
-    container.append(&down_button);
-
-    container
-}
-
 // Widgets used for the graphical user interface.
 pub struct UserInterface {
     pub settings_file: String,
@@ -124,7 +62,6 @@ pub struct UserInterface {
     pub about_label: String,
     pub about_btn: Button,
     pub da: DrawingArea,
-    pub overlay: Overlay,
     pub lookup: DashMap<DateTime<Utc>, PathBuf>,
 }
 
@@ -247,7 +184,6 @@ pub fn instantiate_ui(app: &Application) -> UserInterface {
             .width_request(400)
             .margin_end(40)
             .build(),
-        overlay: Overlay::builder().build(),
         lookup: DashMap::new(),
     };
     let provider = gtk4::CssProvider::new();
