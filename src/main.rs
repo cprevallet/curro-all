@@ -317,35 +317,6 @@ fn build_gui(app: &Application, _files: &[gtk4::gio::File], _: &str) {
     app.add_action(&page_up_action);
     app.set_accels_for_action("app.page_down", &["Page_Down"]);
 
-    let y_zoom_in_action = gio::SimpleAction::new("y_zoom_in", None);
-    y_zoom_in_action.connect_activate(clone!(
-        #[strong]
-        ui1,
-        move |_, _| {
-            let adj = &ui1.y_zoom_adj;
-            let new_val = adj.value() + adj.step_increment();
-            if new_val <= adj.upper() {
-                adj.set_value(new_val);
-            }
-        }
-    )); // y_zoom_in-action
-    app.add_action(&y_zoom_in_action);
-    app.set_accels_for_action("app.y_zoom_in", &["<Primary>F7"]);
-    let y_zoom_out_action = gio::SimpleAction::new("y_zoom_out", None);
-    y_zoom_out_action.connect_activate(clone!(
-        #[strong]
-        ui1,
-        move |_, _| {
-            let adj = &ui1.y_zoom_adj;
-            let new_val = adj.value() - adj.step_increment();
-            if new_val <= adj.upper() {
-                adj.set_value(new_val);
-            }
-        }
-    )); // y_zoom_out-action
-    app.add_action(&y_zoom_out_action);
-    app.set_accels_for_action("app.y_zoom_out", &["<Primary>F8"]);
-
     let unit_toggle_action = gio::SimpleAction::new("toggle-units", None);
     unit_toggle_action.connect_activate(clone!(
         #[strong]

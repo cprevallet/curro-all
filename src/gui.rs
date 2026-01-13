@@ -117,8 +117,6 @@ pub struct UserInterface {
     pub right_frame_pane: gtk4::Paned,
     pub scrolled_window: ScrolledWindow,
     pub da_window: ScrolledWindow,
-    pub y_zoom_adj: Adjustment,
-    pub y_zoom_box: gtk4::Box,
     pub curr_time_label: Label,
     pub controls_box: gtk4::Box,
     pub uom: StringList,
@@ -221,14 +219,6 @@ pub fn instantiate_ui(app: &Application) -> UserInterface {
             .vexpand(true)
             .hexpand(true)
             .build(),
-        y_zoom_adj: Adjustment::builder()
-            .lower(0.5)
-            .upper(4.0)
-            .step_increment(0.1)
-            .page_increment(0.1)
-            .value(1.0)
-            .build(),
-        y_zoom_box: gtk4::Box::builder().build(),
         curr_time_label: Label::new(Some("")),
         controls_box: gtk4::Box::builder()
             .orientation(Orientation::Horizontal)
@@ -310,9 +300,6 @@ pub fn instantiate_ui(app: &Application) -> UserInterface {
     ui.button_box.append(&ui.status_label);
     ui.button_box.append(&ui.time_widget);
     ui.button_box.append(&ui.controls_box);
-    ui.y_zoom_box = create_arrow_controls(&ui.y_zoom_adj);
-    ui.y_zoom_box
-        .set_tooltip_text(Some(&tr("TOOLTIP_ZOOM_SCALE", None)));
     ui.outer_box.append(&ui.button_box);
     ui.outer_box.append(&ui.main_pane);
     ui.controls_box.append(&ui.curr_time_label);
@@ -342,12 +329,8 @@ pub fn construct_views_from_data(
     // 1. Instantiate embedded widgets based on parsed fit data.
     update_map_graph_and_summary_widgets(&ui, &data);
 
-    ui.y_zoom_box.set_halign(gtk4::Align::End);
-    ui.overlay.add_overlay(&ui.y_zoom_box); // The top layer
-    ui.overlay.set_child(Some(&ui.da));
-
     // 2. Connect embedded widgets to their parents.
-    ui.da_window.set_child(Some(&ui.overlay));
+    ui.da_window.set_child(Some(&ui.da));
     ui.frame_right.set_child(Some(&ui.da_window));
     ui.frame_left.set_child(Some(&ui.scrolled_window));
     // 3. Configure the widget layout.
@@ -378,60 +361,7 @@ pub fn connect_interactive_widgets(
             ui.da.queue_draw();
         },
     ));
-
-    // // update the tiles when the map provider changes.
-    // let mc_rc_for_tile = Rc::clone(&mc_rc);
-    // // Hook-up the tile_widget change handler.
-    // // update everything when the unit system changes.
-    // ui.tile_source_widget.connect_selected_notify(clone!(
-    //     #[strong]
-    //     data,
-    //     #[strong]
-    //     ui,
-    //     move |_| {
-    //         let curr_pos = ui.curr_pos_adj.clone();
-    //         ui.da.queue_draw();
-    //     },
-    // ));
-
-    // // Hook-up the zoom scale change handler.
-    // // redraw the graphs when the zoom changes.
-    // ui.y_zoom_adj.connect_value_changed(clone!(
-    //     #[strong]
-    //     data,
-    //     #[strong]
-    //     ui,
-    //     move |_| {
-    //         // Create a new graph cache due to zoom.
-    //         let graph_cache_zoom = instantiate_graph_cache(&data, &ui);
-    //         // Wrap the GraphCache in an Rc for shared ownership.
-    //         let gc_rc_for_zoom = Rc::new(graph_cache_zoom);
-    //         build_graphs(&data, &ui, &gc_rc_for_zoom);
-    //         ui.da.queue_draw();
-    //     },
-    // ));
-
-    // // Hook-up the current position change handler.
-    // // redraw the graphs and map when the current position changes.
-    // // clone the Rc pointer for each independent closure that needs the data.
-    // let mc_rc_for_marker = Rc::clone(&mc_rc);
-    // let gc_rc_for_scale = Rc::clone(&gc_rc);
-    // let curr_pos = ui.curr_pos_adj.clone();
-    // ui.curr_pos_scale.adjustment().connect_value_changed(clone!(
-    //     #[strong]
-    //     data,
-    //     #[strong]
-    //     ui,
-    //     #[strong]
-    //     curr_pos,
-    //     move |_| {
-    //         // Update timestamp
-    //         // Update graphs.
-    //         ui.da.queue_draw();
-    //     },
-    // ));
 }
-
 // Return a unit enumeration from a units widget.
 pub fn get_unit_system(units_widget: &DropDown) -> Units {
     if units_widget.model().is_some() {
@@ -546,7 +476,6 @@ pub fn build_individual_graph(
         stroke_width: 2,
     };
     let mut axis_style = ShapeStyle {
-        // color: color.mix(0.3),
         color: GREY_600.mix(1.0),
         filled: false,
         stroke_width: 2,
