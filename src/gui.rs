@@ -637,17 +637,23 @@ fn build_summary(stat_collection: &Vec<PlottableData>, ui: &UserInterface) {
     plottable_collection.sort_by_key(|item| item.timestamp);
 
     // 5. Iterate through the collection and format the strings
+
+    let pace_formatter = |x: &f32| {
+        let mins = x.trunc();
+        let secs = x.fract() * 60.0;
+        format!("{:02.0}:{:02.0}", mins, secs)
+    };
     for item in plottable_collection {
         let ts = item.timestamp;
         let stats = item.stats;
 
         let row = format!(
-            "{:<18} | {:>9.2} | {:>12} | {:>11.1} | {:>14.1} | {:>7.0} | {:>7.0}\n",
+            "{:<18} | {:>9.2} | {:>12} | {:>11.1} | {:>14} | {:>7.0} | {:>7.0}\n",
             ts.format("%Y-%m-%d").to_string(),
             stats.distance,
             stats.calories,
             stats.duration,
-            stats.enhanced_speed,
+            pace_formatter(&(stats.enhanced_speed as f32)),
             stats.ascent,
             stats.descent
         );
