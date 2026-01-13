@@ -729,12 +729,38 @@ fn build_summary(stat_collection: &Vec<PlottableData>, ui: &UserInterface) {
     ui.text_buffer.delete(&mut start, &mut end);
 
     // 2. Insert Table Header
-    let header = format!(
-        "{:<25} | {:<8} | {:<5} | {:<7} | {:<7} | {:<7} | {:<7}\n",
-        "Date & Time", "Dist(mi)", "Cal", "Time", "mph", "Asc(ft)", "Des(ft)"
-    );
+    let mut header = format!("");
+    let selected_units = get_unit_system(&ui.units_widget);
+    match selected_units {
+        Units::Metric => {
+            header = format!(
+                "{:<18} | {:<9} | {:<12} | {:<11} | {:<14} | {:<7} | {:<7}\n",
+                "Date & Time",
+                "Dist(km)",
+                "Cal (kcal)",
+                "Time(min)",
+                "Pace(min/km)  ",
+                "Asc(m)",
+                "Des(m)"
+            );
+        }
+        Units::US => {
+            header = format!(
+                "{:<18} | {:<9} | {:<12} | {:<11} | {:<14} | {:<7} | {:<7}\n",
+                "Date & Time",
+                "Dist(mi)",
+                "Cal (kcal)",
+                "Time(min)",
+                "Pace(min/mile)",
+                "Asc(ft)",
+                "Des(ft)"
+            );
+        }
+        _ => {}
+    }
+
     ui.text_buffer.insert(&mut end, &header);
-    ui.text_buffer.insert(&mut end, &format!("{:-<95}\n", ""));
+    ui.text_buffer.insert(&mut end, &format!("{:-<96}\n", ""));
 
     // 3. Collect all stats into the PlottableData struct (Parse Once)
     let mut plottable_collection = stat_collection.clone();
@@ -748,7 +774,7 @@ fn build_summary(stat_collection: &Vec<PlottableData>, ui: &UserInterface) {
         let stats = item.stats;
 
         let row = format!(
-            "{:<25} | {:>8.2} | {:>5} | {:>6.1}m | {:>7.1} | {:>7.0} | {:>7.0}\n",
+            "{:<18} | {:>9.2} | {:>12} | {:>11.1} | {:>14.1} | {:>7.0} | {:>7.0}\n",
             ts.format("%Y-%m-%d").to_string(),
             stats.distance,
             stats.calories,
