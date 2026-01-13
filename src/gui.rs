@@ -1,7 +1,7 @@
 // User interface logic - setup, drawing, formatting.
 
 use crate::config::{ICON_NAME, PROGRAM_NAME, SETTINGSFILE, Units, load_config};
-use crate::data::PlottableData;
+use crate::data::{PlottableData, convert_session_data};
 use crate::i18n::tr;
 use dashmap::DashMap;
 use directories::BaseDirs;
@@ -486,12 +486,12 @@ pub fn collect_all_stats(results: &[(DateTime<Utc>, PathBuf)]) -> Vec<PlottableD
 }
 
 pub fn convert_all_stats(raw_stats: &Vec<PlottableData>, ui: &UserInterface) -> Vec<PlottableData> {
-    let units = get_unit_system(&ui.units_widget);
+    let selected_units = get_unit_system(&ui.units_widget);
     raw_stats
         .into_par_iter()
         .map(|plottable_data| PlottableData {
             timestamp: plottable_data.timestamp,
-            stats: plottable_data.stats, //extract_session_data(path).unwrap_or_default(),
+            stats: convert_session_data(&plottable_data.stats, &selected_units).unwrap_or_default(),
         })
         .collect()
 }

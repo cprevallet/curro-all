@@ -447,3 +447,58 @@ pub struct PlottableData {
     pub timestamp: DateTime<Utc>,
     pub stats: SessionStats,
 }
+
+pub fn convert_session_data(
+    stats: &SessionStats,
+    selected_units: &Units,
+) -> Result<SessionStats, Box<dyn std::error::Error + Send + Sync>> {
+    // let mut file = File::open(pathu    // let messages = fitparser::from_reader(&mut file)?;
+    // let mut stats = SessionStats::default();
+
+    // for message in messages     //     if message.kind() == fitparser::profile::field_types::MesgNum::Session {
+    //         for field in message.fields() {
+    //             match field.name() {
+    //                 "total_distance" => {
+    //                     stats.distance = match field.value() {
+    //                         fitparser::Value::Float32(v) => *v as f64,
+    //                         fitparser::Value::Float64(v) => *v,
+    //                         _ => 0.0,
+    //                     };
+    //                 }
+    //                 "total_calories" => {
+    //                     if let fitparser::Value::UInt16(v) = field.value() {
+    //                         stats.calories = *v;
+    //                     }
+    //                 }
+    //                 "total_elapsed_time" => {
+    //                     stats.duration = match field.value() {
+    //                         fitparser::Value::Float32(v) => *v as f64,
+    //                         fitparser::Value::Float64(v) => *v,
+    //                         _ => 0.0,
+    //                     };
+    //                 }
+    //                 "enhanced_avg_speed" => {
+    //                     stats.enhanced_speed = match field.value() {
+    //                         fitparser::Value::Float32(v) => *v as f64,
+    //                         fitparser::Value::Float64(v) => *v,
+    //                         _ => 0.0,
+    //                     };
+    //                 }
+    //                 "total_ascent" => {
+    //                     if let fitparser::Value::UInt16(v) = field.value() {
+    //                         stats.ascent = *v;
+    //                     }
+    //                 }
+    //                 "total_descent" => {
+    //                     if let fitparser::Value::UInt16(v) = field.value() {
+    //                         stats.descent = *v;
+    //                     }
+    //                 }
+    //                 _ => {}
+    //             }
+    //         }
+    //         return Ok(stats);
+    //     }
+    // }
+    Ok(*stats)
+}
