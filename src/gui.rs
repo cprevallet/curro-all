@@ -2,6 +2,7 @@
 
 use crate::config::{ICON_NAME, PROGRAM_NAME, SETTINGSFILE, Units, load_config};
 use crate::i18n::tr;
+use dashmap::DashMap;
 use directories::BaseDirs;
 use gtk4::cairo::Context;
 use gtk4::ffi::GTK_STYLE_PROVIDER_PRIORITY_APPLICATION;
@@ -22,6 +23,7 @@ use std::rc::Rc;
 
 use chrono::{DateTime, Utc};
 use rayon::prelude::*;
+use std::collections::HashMap;
 use std::path::PathBuf;
 
 // Import types from our data module
@@ -125,6 +127,7 @@ pub struct UserInterface {
     pub about_btn: Button,
     pub da: DrawingArea,
     pub overlay: Overlay,
+    pub lookup: DashMap<DateTime<Utc>, PathBuf>,
 }
 
 // Instantiate the object holding the widgets (views).
@@ -254,6 +257,7 @@ pub fn instantiate_ui(app: &Application) -> UserInterface {
             .margin_end(40)
             .build(),
         overlay: Overlay::builder().build(),
+        lookup: DashMap::new(),
     };
     let provider = gtk4::CssProvider::new();
     let css_data = "textview { font: 14px monospace; font-weight: 500;}";

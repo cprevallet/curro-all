@@ -87,7 +87,8 @@ pub fn extract_session_data(
 }
 
 pub fn get_files_in_range(
-    map: &Arc<DashMap<DateTime<Utc>, PathBuf>>,
+    // map: &Arc<DashMap<DateTime<Utc>, PathBuf>>,
+    map: &DashMap<DateTime<Utc>, PathBuf>,
     start: DateTime<Utc>,
     end: DateTime<Utc>,
 ) -> Vec<(DateTime<Utc>, PathBuf)> {
@@ -151,6 +152,7 @@ fn find_ts_in_vec(
     }
     Err("Timestamp not found".into())
 }
+#[derive(Clone)]
 pub enum TimeBucket {
     OneWeek,
     TwoWeeks,

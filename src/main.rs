@@ -37,7 +37,7 @@ use crate::gui::{
     UserInterface, connect_interactive_widgets, construct_views_from_data, instantiate_ui,
 };
 use crate::i18n::tr;
-use chrono::{TimeZone, Utc};
+use dashmap::DashMap;
 use data::{TimeBucket, get_files_in_range, get_time_range, process_fit_directory};
 use gtk4::glib::clone;
 use gtk4::prelude::*;
@@ -47,6 +47,7 @@ use semver::{BuildMetadata, Prerelease};
 use std::error::Error;
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
+use std::sync::Arc;
 
 // Only God and I knew what this was doing when I wrote it.
 // Now only God knows.
@@ -156,14 +157,19 @@ fn build_gui(app: &Application, _files: &[gtk4::gio::File], _: &str) {
                                         spawn_blocking(move || process_fit_directory(&target_dir))
                                             .await
                                             .expect("Worker thread panicked");
-
+                                    for entry in lookup.iter() {
+                                        ui_async
+                                            .lookup
+                                            .insert(entry.key().clone(), entry.value().clone());
+                                    }
                                     // Reset Spinner
                                     ui_async.spinner.stop();
                                     ui_async.spinner.set_visible(false);
                                     ui_async.status_label.set_text(&tr("STATUS_FINISHED", None));
-                                    let bucket = TimeBucket::SeptemberLastYear;
-                                    let (start, end) = get_time_range(bucket);
-                                    let result = get_files_in_range(&lookup, start, end);
+                                    let index = ui_async.time_widget.selected() as usize;
+                                    let selected_variant = &TimeBucket::all_variants()[index];
+                                    let (start, end) = get_time_range(selected_variant.clone());
+                                    let result = get_files_in_range(&ui_async.lookup, start, end);
                                     tie_it_all_together(&result, &ui_async);
                                 });
                             }
