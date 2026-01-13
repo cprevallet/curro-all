@@ -504,7 +504,7 @@ pub fn get_metric_vec(
 }
 
 /// Generates a LineSeries chart for a specific metric.
-pub fn plot_session_metric(
+pub fn build_individual_graph(
     a: &plotters::drawing::DrawingArea<CairoBackend<'_>, plotters::coord::Shift>,
     // results: &[(DateTime<Utc>, PathBuf)],
     plotvals: Vec<(DateTime<Utc>, f64)>,
@@ -588,12 +588,12 @@ pub fn plot_session_metric(
 }
 // Use plotters.rs to draw a graph on the drawing area.
 fn draw_graphs(
-    // data: &Vec<(chrono::DateTime<chrono::Utc>, PathBuf)>,
+    selected_units: &Units,
     distance_plotvals: &Vec<(DateTime<Utc>, f64)>,
     calories_plotvals: &Vec<(DateTime<Utc>, f64)>,
     ascent_plotvals: &Vec<(DateTime<Utc>, f64)>,
     duration_plotvals: &Vec<(DateTime<Utc>, f64)>,
-    speed_plotvals: &Vec<(DateTime<Utc>, f64)>,
+    pace_plotvals: &Vec<(DateTime<Utc>, f64)>,
     descent_plotvals: &Vec<(DateTime<Utc>, f64)>,
     cr: &Context,
     width: f64,
@@ -604,38 +604,51 @@ fn draw_graphs(
         .into_drawing_area();
     let areas = root.split_evenly((3, 2));
 
-    // Generate Distance Graph (Miles)
-    plot_session_metric(
+    let mut distance_unit = "";
+    let mut speed_unit = "";
+    let mut ascent_unit = "";
+    let mut descent_unit = "";
+    match selected_units {
+        Units::Metric => {
+            distance_unit = "Kilometers";
+            speed_unit = "Minutes/Km";
+            ascent_unit = "Meters";
+            descent_unit = "Meters";
+        }
+        Units::US => {
+            distance_unit = "Miles";
+            speed_unit = "Minutes/Mile";
+            ascent_unit = "Feet";
+            descent_unit = "Feet";
+        }
+        _ => {}
+    }
+
+    build_individual_graph(
         &areas[0],
         distance_plotvals.to_vec(),
         "Distance",
-        "Miles",
+        distance_unit,
         &GREEN,
     )
     .unwrap();
-
-    // Generate Calories Graph
-    plot_session_metric(
+    build_individual_graph(
         &areas[1],
         calories_plotvals.to_vec(),
         "Calories",
-        "kcal",
+        "Kcal",
         &BLUE,
     )
     .unwrap();
-
-    // Generate Ascent Graph (Feet)
-    plot_session_metric(
+    build_individual_graph(
         &areas[2],
-        ascent_plotvals.to_vec(),
-        "Elevation Gain",
-        "Feet",
-        &CYAN,
+        pace_plotvals.to_vec(),
+        "Pace",
+        speed_unit,
+        &BROWN,
     )
     .unwrap();
-
-    // Generate Duration Graph (Minutes)
-    plot_session_metric(
+    build_individual_graph(
         &areas[3],
         duration_plotvals.to_vec(),
         "Duration",
@@ -643,16 +656,19 @@ fn draw_graphs(
         &RED,
     )
     .unwrap();
-
-    // Generate Average Speed Graph (MPH)
-    plot_session_metric(&areas[4], speed_plotvals.to_vec(), "Pace", "Min/mi", &BROWN).unwrap();
-
-    // Generate Descent Graph (Feet)
-    plot_session_metric(
+    build_individual_graph(
+        &areas[4],
+        ascent_plotvals.to_vec(),
+        "Elevation Gain",
+        ascent_unit,
+        &CYAN,
+    )
+    .unwrap();
+    build_individual_graph(
         &areas[5],
         descent_plotvals.to_vec(),
         "Elevation Loss",
-        "Feet",
+        descent_unit,
         &YELLOW,
     )
     .unwrap();
@@ -664,6 +680,7 @@ fn draw_graphs(
 // set-up the draw function callback.
 fn build_graphs(stats: &Vec<PlottableData>, ui: &UserInterface) {
     // Need to clone to use inside the closure.
+    let selected_units = get_unit_system(&ui.units_widget);
     let distance_plotvals: Vec<(DateTime<Utc>, f64)> =
         get_metric_vec(&stats, |s| s.distance as f64);
     let calories_plotvals: Vec<(DateTime<Utc>, f64)> =
@@ -671,17 +688,18 @@ fn build_graphs(stats: &Vec<PlottableData>, ui: &UserInterface) {
     let ascent_plotvals: Vec<(DateTime<Utc>, f64)> = get_metric_vec(&stats, |s| s.ascent as f64);
     let duration_plotvals: Vec<(DateTime<Utc>, f64)> =
         get_metric_vec(&stats, |s| s.duration as f64);
-    let speed_plotvals: Vec<(DateTime<Utc>, f64)> =
+    let pace_plotvals: Vec<(DateTime<Utc>, f64)> =
         get_metric_vec(&stats, |s| s.enhanced_speed as f64);
     let descent_plotvals: Vec<(DateTime<Utc>, f64)> = get_metric_vec(&stats, |s| s.descent as f64);
     ui.da
         .set_draw_func(clone!(move |_drawing_area, cr, width, height| {
             draw_graphs(
+                &selected_units,
                 &distance_plotvals,
                 &calories_plotvals,
                 &ascent_plotvals,
                 &duration_plotvals,
-                &speed_plotvals,
+                &pace_plotvals,
                 &descent_plotvals,
                 cr,
                 width as f64,
