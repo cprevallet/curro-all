@@ -138,3 +138,4 @@ ONE_WEEK = Dernière semaine
 TWO_WEEKS = Dernières 2 semaines
 THREE_WEEKS = Dernières 3 semaines
 FOUR_WEEKS = Dernières 4 semaines
+YEAR_TO_DATE = Cumul annuel

@@ -178,6 +178,7 @@ pub enum TimeBucket {
     TwoWeeks,
     ThreeWeeks,
     FourWeeks,
+    YearToDate,
 
     // This Year
     JanuaryThisYear,
@@ -248,6 +249,13 @@ pub fn get_time_range(bucket: TimeBucket) -> (DateTime<Utc>, DateTime<Utc>) {
 
             (start_ts, now)
         }
+
+        // --- YEAR TO DATE ---
+        TimeBucket::YearToDate => {
+            let start_ts = Utc.with_ymd_and_hms(current_year, 1, 1, 0, 0, 0).unwrap();
+            (start_ts, now)
+        }
+
         // --- HISTORICAL YEAR LOGIC ---
         TimeBucket::TwoYearsAgo
         | TimeBucket::ThreeYearsAgo
@@ -340,6 +348,7 @@ impl TimeBucket {
             TwoWeeks,
             ThreeWeeks,
             FourWeeks,
+            YearToDate,
             JanuaryThisYear,
             FebruaryThisYear,
             MarchThisYear,
@@ -387,6 +396,7 @@ impl TimeBucket {
             TimeBucket::TwoWeeks => tr("TWO_WEEKS", None),
             TimeBucket::ThreeWeeks => tr("THREE_WEEKS", None),
             TimeBucket::FourWeeks => tr("FOUR_WEEKS", None),
+            TimeBucket::YearToDate => tr("YEAR_TO_DATE", None),
 
             // This Year Variants
             TimeBucket::JanuaryThisYear => format!("{} {}", tr("JANUARY", None), this_year),
@@ -442,7 +452,8 @@ pub fn get_filtered_variants() -> Vec<TimeBucket> {
                 TimeBucket::OneWeek
                 | TimeBucket::TwoWeeks
                 | TimeBucket::ThreeWeeks
-                | TimeBucket::FourWeeks => true,
+                | TimeBucket::FourWeeks
+                | TimeBucket::YearToDate => true,
 
                 // Check specific variants for "Last Year" (always keep)
                 b if format!("{:?}", b).contains("LastYear") => true,

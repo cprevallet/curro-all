@@ -140,3 +140,4 @@ ONE_WEEK = One week
 TWO_WEEKS = Two weeks
 THREE_WEEKS = Three weeks
 FOUR_WEEKS = Four weeks
+YEAR_TO_DATE = Year to date
