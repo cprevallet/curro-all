@@ -427,11 +427,11 @@ pub fn build_individual_graph(
 
     chart
         .configure_mesh()
-        .x_labels(5)
+        .x_labels(16)
         .x_label_style(axis_text_style.clone())
         .y_labels(5)
         .y_label_style(axis_text_style.clone())
-        .x_label_formatter(&|d| d.format("%Y-%m-%d").to_string())
+        .x_label_formatter(&|d| d.format("%m-%d").to_string())
         .y_desc(unit_label)
         .light_line_style(light_line_style)
         .bold_line_style(bold_line_style)
