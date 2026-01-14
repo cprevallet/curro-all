@@ -1,7 +1,7 @@
 // User interface logic - setup, drawing, formatting.
 
 use crate::config::{ICON_NAME, PROGRAM_NAME, SETTINGSFILE, Units, load_config};
-use crate::data::{PlottableData, convert_session_data};
+use crate::data::{PlottableData, TimeBucket, convert_session_data, get_time_range};
 use crate::i18n::tr;
 use dashmap::DashMap;
 use directories::BaseDirs;
@@ -325,6 +325,13 @@ pub fn set_up_user_defaults(ui: &UserInterface) {
     ui.right_frame_pane.set_position(config.right_frame_split);
     ui.left_frame_pane.set_position(config.left_frame_split);
     ui.units_widget.set_selected(config.units_index);
+}
+
+pub fn get_selected_start_end(ui: &UserInterface) -> (DateTime<Utc>, DateTime<Utc>) {
+    let index = ui.time_widget.selected() as usize;
+    let selected_variant = &TimeBucket::all_variants()[index];
+    let (start, end) = get_time_range(selected_variant.clone());
+    return (start, end);
 }
 
 // #####################################################################
