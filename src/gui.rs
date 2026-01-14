@@ -259,7 +259,7 @@ pub fn instantiate_ui(app: &Application) -> UserInterface {
 }
 // After reading the fit file, display the additional views of the UI.
 pub fn construct_views_from_data(
-    ui: &UserInterface,
+    ui: &Rc<UserInterface>,
     data: &Vec<(chrono::DateTime<chrono::Utc>, PathBuf)>,
 ) {
     // 1. Instantiate embedded widgets based on parsed fit data.
@@ -329,9 +329,12 @@ pub fn set_up_user_defaults(ui: &UserInterface) {
 
 pub fn get_selected_start_end(ui: &UserInterface) -> (DateTime<Utc>, DateTime<Utc>) {
     let index = ui.time_widget.selected() as usize;
-    let selected_variant = &TimeBucket::all_variants()[index];
-    let (start, end) = get_time_range(selected_variant.clone());
-    return (start, end);
+    let filtered_variants = get_filtered_variants();
+    if let Some(selected_variant) = filtered_variants.get(index) {
+        let (start, end) = get_time_range(selected_variant.clone());
+        return (start, end);
+    }
+    return (Utc::now(), Utc::now());
 }
 
 // #####################################################################
@@ -378,6 +381,7 @@ pub fn get_metric_vec(
 
 /// Generates a LineSeries chart for a specific metric.
 pub fn build_individual_graph(
+    ui: &UserInterface,
     a: &plotters::drawing::DrawingArea<CairoBackend<'_>, plotters::coord::Shift>,
     // results: &[(DateTime<Utc>, PathBuf)],
     plotvals: Vec<(DateTime<Utc>, f64)>,
@@ -389,7 +393,7 @@ pub fn build_individual_graph(
         return Ok(());
     }
 
-    let (start_date, end_date) = (plotvals.first().unwrap().0, plotvals.last().unwrap().0);
+    let (start_date, end_date) = get_selected_start_end(&ui);
     let max_val = plotvals.iter().map(|(_, v)| *v).fold(0.0, f64::max) * 1.1;
 
     let is_dark = StyleManager::default().is_dark();
@@ -460,7 +464,7 @@ pub fn build_individual_graph(
 }
 // Use plotters.rs to draw a graph on the drawing area.
 fn draw_graphs(
-    selected_units: &Units,
+    ui: &UserInterface,
     distance_plotvals: &Vec<(DateTime<Utc>, f64)>,
     calories_plotvals: &Vec<(DateTime<Utc>, f64)>,
     ascent_plotvals: &Vec<(DateTime<Utc>, f64)>,
@@ -471,6 +475,7 @@ fn draw_graphs(
     width: f64,
     height: f64,
 ) {
+    let selected_units = get_unit_system(&ui.units_widget);
     let root = plotters_cairo::CairoBackend::new(&cr, (width as u32, height as u32))
         .unwrap()
         .into_drawing_area();
@@ -497,6 +502,7 @@ fn draw_graphs(
     }
 
     build_individual_graph(
+        &ui,
         &areas[0],
         distance_plotvals.to_vec(),
         "Distance",
@@ -505,6 +511,7 @@ fn draw_graphs(
     )
     .unwrap();
     build_individual_graph(
+        &ui,
         &areas[1],
         calories_plotvals.to_vec(),
         "Calories",
@@ -513,6 +520,7 @@ fn draw_graphs(
     )
     .unwrap();
     build_individual_graph(
+        &ui,
         &areas[2],
         pace_plotvals.to_vec(),
         "Pace",
@@ -521,6 +529,7 @@ fn draw_graphs(
     )
     .unwrap();
     build_individual_graph(
+        &ui,
         &areas[3],
         duration_plotvals.to_vec(),
         "Duration",
@@ -529,6 +538,7 @@ fn draw_graphs(
     )
     .unwrap();
     build_individual_graph(
+        &ui,
         &areas[4],
         ascent_plotvals.to_vec(),
         "Elevation Gain",
@@ -537,6 +547,7 @@ fn draw_graphs(
     )
     .unwrap();
     build_individual_graph(
+        &ui,
         &areas[5],
         descent_plotvals.to_vec(),
         "Elevation Loss",
@@ -550,9 +561,8 @@ fn draw_graphs(
 
 // Build the graphs.  Prepare the graphical data for the drawing area and
 // set-up the draw function callback.
-fn build_graphs(stats: &Vec<PlottableData>, ui: &UserInterface) {
+fn build_graphs(stats: &Vec<PlottableData>, ui: &Rc<UserInterface>) {
     // Need to clone to use inside the closure.
-    let selected_units = get_unit_system(&ui.units_widget);
     let distance_plotvals: Vec<(DateTime<Utc>, f64)> =
         get_metric_vec(&stats, |s| s.distance as f64);
     let calories_plotvals: Vec<(DateTime<Utc>, f64)> =
@@ -563,10 +573,12 @@ fn build_graphs(stats: &Vec<PlottableData>, ui: &UserInterface) {
     let pace_plotvals: Vec<(DateTime<Utc>, f64)> =
         get_metric_vec(&stats, |s| s.enhanced_speed as f64);
     let descent_plotvals: Vec<(DateTime<Utc>, f64)> = get_metric_vec(&stats, |s| s.descent as f64);
-    ui.da
-        .set_draw_func(clone!(move |_drawing_area, cr, width, height| {
+    ui.da.set_draw_func(clone!(
+        #[strong]
+        ui,
+        move |_drawing_area, cr, width, height| {
             draw_graphs(
-                &selected_units,
+                &ui,
                 &distance_plotvals,
                 &calories_plotvals,
                 &ascent_plotvals,
@@ -577,12 +589,13 @@ fn build_graphs(stats: &Vec<PlottableData>, ui: &UserInterface) {
                 width as f64,
                 height as f64,
             );
-        }));
+        }
+    ));
 }
 
 // Update the views when supplied with data.
 fn update_map_graph_and_summary_widgets(
-    ui: &UserInterface,
+    ui: &Rc<UserInterface>,
     data: &Vec<(chrono::DateTime<chrono::Utc>, PathBuf)>,
 ) {
     let stats = collect_all_stats(data);

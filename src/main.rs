@@ -34,11 +34,12 @@ use crate::config::{
 };
 use crate::gio::spawn_blocking;
 use crate::gui::{
-    UserInterface, connect_interactive_widgets, construct_views_from_data, get_selected_start_end,
-    instantiate_ui,
+    UserInterface, connect_interactive_widgets, construct_views_from_data, instantiate_ui,
 };
 use crate::i18n::tr;
-use data::{get_files_in_range, get_filtered_variants, get_time_range, process_fit_directory};
+use data::{
+    TimeBucket, get_files_in_range, get_filtered_variants, get_time_range, process_fit_directory,
+};
 use gtk4::glib::clone;
 use gtk4::prelude::*;
 use gtk4::{ButtonsType, License, MessageDialog, MessageType, gio};
@@ -166,7 +167,9 @@ fn build_gui(app: &Application, _files: &[gtk4::gio::File], _: &str) {
                                     ui_async.spinner.set_visible(false);
                                     ui_async.time_widget.set_visible(true);
                                     ui_async.status_label.set_text(&tr("STATUS_FINISHED", None));
-                                    let (start, end) = get_selected_start_end(&ui_async);
+                                    let index = ui_async.time_widget.selected() as usize;
+                                    let selected_variant = &TimeBucket::all_variants()[index];
+                                    let (start, end) = get_time_range(selected_variant.clone());
                                     let result = get_files_in_range(&ui_async.lookup, start, end);
                                     tie_it_all_together(&result, &ui_async);
                                 });
