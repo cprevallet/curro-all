@@ -130,6 +130,11 @@ pub fn process_fit_directory(pathbuf: &PathBuf) -> Arc<DashMap<DateTime<Utc>, Pa
 fn extract_timestamp_fast(
     path: &Path,
 ) -> Result<DateTime<Utc>, Box<dyn std::error::Error + Send + Sync>> {
+    // 1. First Pass: Attempt to parse from the filename
+    if let Ok(ts) = parse_filename_timestamp(path) {
+        return Ok(ts);
+    }
+    // 2. Second Pass: Fallback to the original FIT parser logic
     let file = File::open(path)?;
     let mut reader = file.take(2048);
     match fitparser::from_reader(&mut reader) {
@@ -154,6 +159,19 @@ fn find_ts_in_vec(
     }
     Err("Timestamp not found".into())
 }
+
+pub fn parse_filename_timestamp(
+    path: &Path,
+) -> Result<DateTime<Utc>, Box<dyn std::error::Error + Send + Sync>> {
+    let file_stem = path
+        .file_stem()
+        .and_then(|s| s.to_str())
+        .ok_or("Invalid filename")?;
+    let format = "%Y-%m-%d-%H-%M-%S";
+    let naive_dt = chrono::NaiveDateTime::parse_from_str(file_stem, format)?;
+    Ok(Utc.from_local_datetime(&naive_dt).unwrap())
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum TimeBucket {
     OneWeek,
