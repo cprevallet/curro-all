@@ -206,6 +206,17 @@ pub enum TimeBucket {
     OctoberLastYear,
     NovemberLastYear,
     DecemberLastYear,
+
+    //Historical Years
+    TwoYearsAgo,
+    ThreeYearsAgo,
+    FourYearsAgo,
+    FiveYearsAgo,
+    SixYearsAgo,
+    SevenYearsAgo,
+    EightYearsAgo,
+    NineYearsAgo,
+    TenYearsAgo,
 }
 
 pub fn get_time_range(bucket: TimeBucket) -> (DateTime<Utc>, DateTime<Utc>) {
@@ -237,7 +248,37 @@ pub fn get_time_range(bucket: TimeBucket) -> (DateTime<Utc>, DateTime<Utc>) {
 
             (start_ts, now)
         }
+        // --- HISTORICAL YEAR LOGIC ---
+        TimeBucket::TwoYearsAgo
+        | TimeBucket::ThreeYearsAgo
+        | TimeBucket::FourYearsAgo
+        | TimeBucket::FiveYearsAgo
+        | TimeBucket::SixYearsAgo
+        | TimeBucket::SevenYearsAgo
+        | TimeBucket::EightYearsAgo
+        | TimeBucket::NineYearsAgo
+        | TimeBucket::TenYearsAgo => {
+            let offset = match bucket {
+                TimeBucket::TwoYearsAgo => 2,
+                TimeBucket::ThreeYearsAgo => 3,
+                TimeBucket::FourYearsAgo => 4,
+                TimeBucket::FiveYearsAgo => 5,
+                TimeBucket::SixYearsAgo => 6,
+                TimeBucket::SevenYearsAgo => 7,
+                TimeBucket::EightYearsAgo => 8,
+                TimeBucket::NineYearsAgo => 9,
+                TimeBucket::TenYearsAgo => 10,
+                _ => unreachable!(),
+            };
 
+            let target_year = current_year - offset;
+            let start_ts = Utc.with_ymd_and_hms(target_year, 1, 1, 0, 0, 0).unwrap();
+            let end_ts = Utc
+                .with_ymd_and_hms(target_year, 12, 31, 23, 59, 59)
+                .unwrap();
+
+            (start_ts, end_ts)
+        }
         // --- MONTHLY LOGIC (Current and Previous Year) ---
         _ => {
             let (month_num, target_year) = match bucket {
@@ -323,6 +364,15 @@ impl TimeBucket {
             OctoberLastYear,
             NovemberLastYear,
             DecemberLastYear,
+            TwoYearsAgo,
+            ThreeYearsAgo,
+            FourYearsAgo,
+            FiveYearsAgo,
+            SixYearsAgo,
+            SevenYearsAgo,
+            EightYearsAgo,
+            NineYearsAgo,
+            TenYearsAgo,
         ]
     }
 
@@ -365,6 +415,17 @@ impl TimeBucket {
             TimeBucket::OctoberLastYear => format!("{} {}", tr("OCTOBER", None), last_year),
             TimeBucket::NovemberLastYear => format!("{} {}", tr("NOVEMBER", None), last_year),
             TimeBucket::DecemberLastYear => format!("{} {}", tr("DECEMBER", None), last_year),
+
+            // Historical Variants
+            TimeBucket::TwoYearsAgo => (this_year - 2).to_string(),
+            TimeBucket::ThreeYearsAgo => (this_year - 3).to_string(),
+            TimeBucket::FourYearsAgo => (this_year - 4).to_string(),
+            TimeBucket::FiveYearsAgo => (this_year - 5).to_string(),
+            TimeBucket::SixYearsAgo => (this_year - 6).to_string(),
+            TimeBucket::SevenYearsAgo => (this_year - 7).to_string(),
+            TimeBucket::EightYearsAgo => (this_year - 8).to_string(),
+            TimeBucket::NineYearsAgo => (this_year - 9).to_string(),
+            TimeBucket::TenYearsAgo => (this_year - 10).to_string(),
         }
     }
 }
@@ -385,6 +446,8 @@ pub fn get_filtered_variants() -> Vec<TimeBucket> {
 
                 // Check specific variants for "Last Year" (always keep)
                 b if format!("{:?}", b).contains("LastYear") => true,
+                // Check for historical (always keep)
+                b if format!("{:?}", b).contains("YearsAgo") => true,
 
                 // Filter "This Year" months
                 TimeBucket::JanuaryThisYear => 1 <= current_month,
