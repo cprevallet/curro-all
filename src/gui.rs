@@ -327,10 +327,16 @@ pub fn set_up_user_defaults(ui: &UserInterface) {
     ui.units_widget.set_selected(config.units_index);
 }
 
-pub fn get_selected_start_end(ui: &UserInterface) -> (DateTime<Utc>, DateTime<Utc>) {
+// Return the time bucket the user has selected from the dropdown.
+pub fn get_time_bucket(ui: &UserInterface) -> Option<TimeBucket> {
     let index = ui.time_widget.selected() as usize;
     let filtered_variants = get_filtered_variants();
-    if let Some(selected_variant) = filtered_variants.get(index) {
+    return filtered_variants.get(index).copied();
+}
+
+// Return the time range corresponding to the time bucket the user has selected from the drop down.
+pub fn get_selected_start_end(ui: &UserInterface) -> (DateTime<Utc>, DateTime<Utc>) {
+    if let Some(selected_variant) = get_time_bucket(&ui) {
         let (start, end) = get_time_range(selected_variant.clone());
         return (start, end);
     }
@@ -393,7 +399,18 @@ pub fn build_individual_graph(
         return Ok(());
     }
 
+    let mut num_x_label = 16; // default
     let (start_date, end_date) = get_selected_start_end(&ui);
+    if let Some(selected_variant) = get_time_bucket(&ui) {
+        if selected_variant == TimeBucket::OneWeek {
+            num_x_label = 7; // days in a single week
+        }
+
+        if format!("{:?}", selected_variant).contains("YearsAgo") {
+            num_x_label = 12;
+        }
+    }
+    // Add some margin to the top of the graph.
     let max_val = plotvals.iter().map(|(_, v)| *v).fold(0.0, f64::max) * 1.1;
 
     let is_dark = StyleManager::default().is_dark();
@@ -438,7 +455,7 @@ pub fn build_individual_graph(
 
     chart
         .configure_mesh()
-        .x_labels(16)
+        .x_labels(num_x_label)
         .x_label_style(axis_text_style.clone())
         .y_labels(5)
         .y_label_style(axis_text_style.clone())
