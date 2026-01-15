@@ -117,7 +117,9 @@ pub fn instantiate_ui(app: &Application) -> UserInterface {
             .height_request(20)
             .spacing(10)
             .build(),
-        main_pane: gtk4::Paned::builder().build(),
+        main_pane: gtk4::Paned::builder()
+            .orientation(Orientation::Vertical)
+            .build(),
         btn: Button::builder()
             .margin_top(5)
             .margin_bottom(5)
