@@ -52,7 +52,8 @@ GRAPH_CAPTION_ASCENT = Ascent
 GRAPH_CAPTION_DESCENT = Descent
 GRAPH_CAPTION_DURATION = Duration
 
-LABEL_DISTANCE_MILES = Distance (miles)
+LABEL_DATE_TIME = DATE AND TIME
+LABEL_DISTANCE_MILES = Distance (mi)
 LABEL_DISTANCE_KM = Distance (km)
 LABEL_PACE_US = Pace (min/mile)
 LABEL_PACE_METRIC = Pace (min/km)
@@ -62,6 +63,7 @@ LABEL_ELEVATION_FT = Elevation (feet)
 LABEL_ELEVATION_M = Elevation (m)
 LABEL_TEMP_F = Temperature (°F)
 LABEL_TEMP_C = Temperature (°C)
+LABEL_DURATION = Duration (min)
 
 UNIT_FEET = feet
 UNIT_METERS = meters

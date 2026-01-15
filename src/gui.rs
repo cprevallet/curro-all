@@ -680,24 +680,24 @@ fn build_summary(stat_collection: &Vec<PlottableData>, ui: &UserInterface) {
     match selected_units {
         Units::Metric => {
             header = format!(
-                "{:<18} | {:<9} | {:<12} | {:<11} | {:<14} | {:<7} | {:<7}\n",
-                "Date & Time",
-                "Dist(km)",
+                "{:<14} | {:>18} | {:>12} | {:>18} | {:>18} | {:>7} | {:>7}\n",
+                tr("LABEL_DATE_TIME", None),
+                tr("LABEL_DISTANCE_KM", None),
                 "Cal (kcal)",
-                "Time(min)",
-                "Pace(min/km)  ",
+                tr("LABEL_DURATION", None),
+                tr("LABEL_PACE_METRIC", None),
                 "Asc(m)",
                 "Des(m)"
             );
         }
         Units::US => {
             header = format!(
-                "{:<18} | {:<9} | {:<12} | {:<11} | {:<14} | {:<7} | {:<7}\n",
-                "Date & Time",
-                "Dist(mi)",
+                "{:<14} | {:>18} | {:>12} | {:>18} | {:>18} | {:>7} | {:>7}\n",
+                tr("LABEL_DATE_TIME", None),
+                tr("LABEL_DISTANCE_MILES", None),
                 "Cal (kcal)",
-                "Time(min)",
-                "Pace(min/mile)",
+                tr("LABEL_DURATION", None),
+                tr("LABEL_PACE_US", None),
                 "Asc(ft)",
                 "Des(ft)"
             );
@@ -706,7 +706,7 @@ fn build_summary(stat_collection: &Vec<PlottableData>, ui: &UserInterface) {
     }
 
     ui.text_buffer.insert(&mut end, &header);
-    ui.text_buffer.insert(&mut end, &format!("{:-<96}\n", ""));
+    ui.text_buffer.insert(&mut end, &format!("{:-<114}\n", ""));
 
     // 3. Collect all stats into the PlottableData struct (Parse Once)
     let mut plottable_collection = stat_collection.clone();
@@ -726,7 +726,7 @@ fn build_summary(stat_collection: &Vec<PlottableData>, ui: &UserInterface) {
         let stats = item.stats;
 
         let row = format!(
-            "{:<18} | {:>9.2} | {:>12} | {:>11.1} | {:>14} | {:>7.0} | {:>7.0}\n",
+            "{:<14} | {:>18.2} | {:>12} | {:>18.1} | {:>18} | {:>7.0} | {:>7.0}\n",
             ts.format("%Y-%m-%d").to_string(),
             stats.distance,
             stats.calories,
