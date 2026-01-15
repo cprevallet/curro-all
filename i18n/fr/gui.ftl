@@ -11,16 +11,6 @@ STATUS_PROCESSING = Traitement en cours
 STATUS_FINISHED = Terminé
 MESSAGE_FILE_NOT_FOUND = Fichier introuvable.
 MESSAGE_PERMISSIONS = Erreur inconnue. Problème d'autorisations?
-MESSAGE_API_MAPTILER_SATELLITE =
-    Aucune clé API trouvée.
-    Définissez la variable d'environnement MAPTILER_SATELLITE_KEY=?
-    Reportez-vous à la documentation pour les procédures d'obtention et d'installation de la clé.
-MESSAGE_API_MAPTILER_OUTDOOR =
-    Aucune clé API trouvée.
-    Définissez la variable d'environnement MAPTILER_OUTDOOR_KEY=?
-    Reportez-vous à la documentation pour les procédures d'obtention et d'installation de la clé.
-
-TOOLTIP_TILE_SOURCE = Sélectionnez le fournisseur de fonds de carte. (Ctrl+N, Ctrl+P)
 
 TOOLTIP_TEXT_VIEW = 
     Cette section contient un rapport sur les tours, les zones de fréquence cardiaque et les informations de résumé de session.
@@ -40,16 +30,6 @@ TOOLTIP_UNITS_DROPDOWN =
 
     Ce sera le système par défaut lors du prochain démarrage du programme, mais il peut être modifié à tout moment.
 
-TOOLTIP_POSITION_SCALE = 
-    Déplacez-vous du début à la fin de votre course avec cette commande.
-    (Ctrl+F, Ctrl+B)
-    
-    Des lignes apparaîtront sur les graphiques et un marqueur apparaîtra sur la carte indiquant votre position.
-    Réinitialisez au début pour les supprimer.
-    
-    Utilisez les flèches droite et gauche de votre clavier pour un contrôle de haute précision.
-
-TOOLTIP_ZOOM_SCALE = Zoomez sur les axes y des graphiques avec cette commande. (Ctrl-F7, Ctrl-F8)
 TOOLTIP_MAP_FRAME = 
     Cette section affiche un parcours basé sur les données GPS collectées par votre montre.
     
@@ -76,12 +56,6 @@ LABEL_ELEVATION_FT = Altitude (pieds)
 LABEL_ELEVATION_M = Altitude (m)
 LABEL_TEMP_F = Température (°F)
 LABEL_TEMP_C = Température (°C)
-
-SUMMARY_FILE_LOADED = Fichier chargé.
-SUMMARY_SESSION_HEADER = ============================ Session ==================================
-SUMMARY_LAP_HEADER = Tour
-SUMMARY_HR_ZONE_HEADER = ========= Temps dans les zones de fréquence cardiaque pour la session ========
-SUMMARY_HR_ZONE_LABEL = Zone
 
 UNIT_FEET = pieds
 UNIT_METERS = mètres

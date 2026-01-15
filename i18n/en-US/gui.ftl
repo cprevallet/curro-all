@@ -11,17 +11,6 @@ STATUS_PROCESSING = Processing
 STATUS_FINISHED = Finished!
 MESSAGE_FILE_NOT_FOUND = File not found.
 MESSAGE_PERMISSIONS = Unknown error. Permissions problem?
-MESSAGE_API_MAPTILER_SATELLITE =
-    No API key found.
-    Set environment variable MAPTILER_SATELLITE_KEY=?
-    Refer to the documentation for instructions on how to obtain and install the key.
-
-MESSAGE_API_MAPTILER_OUTDOOR =
-    No API key found.
-    Set environment variable MAPTILER_OUTDOOR_KEY=?
-    Refer to the documentation for instructions on how to obtain and install the key.
-
-TOOLTIP_TILE_SOURCE = Select your map's tile provider. (Ctrl+N, Ctrl+P)
 
 TOOLTIP_TEXT_VIEW = 
     This section contains a report of lap, heart rate zones, and session summary information.
@@ -41,16 +30,6 @@ TOOLTIP_UNITS_DROPDOWN =
 
     This will be the default next time you start the program but can be changed anytime.
 
-TOOLTIP_POSITION_SCALE = 
-    Move from the beginning to the end of your run with this control.
-    (Ctrl+F, Ctrl+B)
-    
-    Hairlines will appear on the graphs and a marker will appear on the map indicating your position.
-    Reset to the beginning to remove.
-    
-    Use your keyboard right and left arrows for high precision control.
-
-TOOLTIP_ZOOM_SCALE = Zoom the graphs' y-axes with this control. (Ctrl-F7, Ctrl-F8)
 
 TOOLTIP_MAP_FRAME = 
     This section displays a run path based on GPS data collected by your watch.
@@ -78,12 +57,6 @@ LABEL_ELEVATION_FT = Elevation (feet)
 LABEL_ELEVATION_M = Elevation (m)
 LABEL_TEMP_F = Temperature (°F)
 LABEL_TEMP_C = Temperature (°C)
-
-SUMMARY_FILE_LOADED = File loaded.
-SUMMARY_SESSION_HEADER = ============================ Session ==================================
-SUMMARY_LAP_HEADER = Lap
-SUMMARY_HR_ZONE_HEADER = =================== Time in Heart Rate Zones for Session  ========
-SUMMARY_HR_ZONE_LABEL = Zone
 
 UNIT_FEET = feet
 UNIT_METERS = meters
