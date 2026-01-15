@@ -498,80 +498,121 @@ fn draw_graphs(
         .into_drawing_area();
     let areas = root.split_evenly((3, 2));
 
-    let mut distance_unit = "";
-    let mut speed_unit = "";
-    let mut ascent_unit = "";
-    let mut descent_unit = "";
     match selected_units {
         Units::Metric => {
-            distance_unit = "Kilometers";
-            speed_unit = "Minutes/Km";
-            ascent_unit = "Meters";
-            descent_unit = "Meters";
+            build_individual_graph(
+                &ui,
+                &areas[0],
+                distance_plotvals.to_vec(),
+                &tr("GRAPH_CAPTION_DISTANCE", None),
+                &tr("UNIT_KM", None),
+                &GREEN,
+            )
+            .unwrap();
+            build_individual_graph(
+                &ui,
+                &areas[1],
+                calories_plotvals.to_vec(),
+                &tr("GRAPH_CAPTION_CALORIES", None),
+                "kcal",
+                &BLUE,
+            )
+            .unwrap();
+            build_individual_graph(
+                &ui,
+                &areas[2],
+                pace_plotvals.to_vec(),
+                &tr("GRAPH_CAPTION_PACE", None),
+                &tr("UNIT_PACE_METRIC", None),
+                &BROWN,
+            )
+            .unwrap();
+            build_individual_graph(
+                &ui,
+                &areas[3],
+                duration_plotvals.to_vec(),
+                &tr("GRAPH_CAPTION_DURATION", None),
+                "minutes",
+                &RED,
+            )
+            .unwrap();
+            build_individual_graph(
+                &ui,
+                &areas[4],
+                ascent_plotvals.to_vec(),
+                &tr("GRAPH_CAPTION_ASCENT", None),
+                &tr("UNIT_METERS", None),
+                &CYAN,
+            )
+            .unwrap();
+            build_individual_graph(
+                &ui,
+                &areas[5],
+                descent_plotvals.to_vec(),
+                &tr("GRAPH_CAPTION_DESCENT", None),
+                &tr("UNIT_METERS", None),
+                &YELLOW,
+            )
+            .unwrap();
         }
         Units::US => {
-            distance_unit = "Miles";
-            speed_unit = "Minutes/Mile";
-            ascent_unit = "Feet";
-            descent_unit = "Feet";
+            build_individual_graph(
+                &ui,
+                &areas[0],
+                distance_plotvals.to_vec(),
+                &tr("GRAPH_CAPTION_DISTANCE", None),
+                &tr("UNIT_MILES", None),
+                &GREEN,
+            )
+            .unwrap();
+            build_individual_graph(
+                &ui,
+                &areas[1],
+                calories_plotvals.to_vec(),
+                &tr("GRAPH_CAPTION_CALORIES", None),
+                "kcal",
+                &BLUE,
+            )
+            .unwrap();
+            build_individual_graph(
+                &ui,
+                &areas[2],
+                pace_plotvals.to_vec(),
+                &tr("GRAPH_CAPTION_PACE", None),
+                &tr("UNIT_PACE_US", None),
+                &BROWN,
+            )
+            .unwrap();
+            build_individual_graph(
+                &ui,
+                &areas[3],
+                duration_plotvals.to_vec(),
+                &tr("GRAPH_CAPTION_DURATION", None),
+                "minutes",
+                &RED,
+            )
+            .unwrap();
+            build_individual_graph(
+                &ui,
+                &areas[4],
+                ascent_plotvals.to_vec(),
+                &tr("GRAPH_CAPTION_ASCENT", None),
+                &tr("UNIT_FEET", None),
+                &CYAN,
+            )
+            .unwrap();
+            build_individual_graph(
+                &ui,
+                &areas[5],
+                descent_plotvals.to_vec(),
+                &tr("GRAPH_CAPTION_DESCENT", None),
+                &tr("UNIT_FEET", None),
+                &YELLOW,
+            )
+            .unwrap();
         }
         _ => {}
     }
-
-    build_individual_graph(
-        &ui,
-        &areas[0],
-        distance_plotvals.to_vec(),
-        "Distance",
-        distance_unit,
-        &GREEN,
-    )
-    .unwrap();
-    build_individual_graph(
-        &ui,
-        &areas[1],
-        calories_plotvals.to_vec(),
-        "Calories",
-        "Kcal",
-        &BLUE,
-    )
-    .unwrap();
-    build_individual_graph(
-        &ui,
-        &areas[2],
-        pace_plotvals.to_vec(),
-        "Pace",
-        speed_unit,
-        &BROWN,
-    )
-    .unwrap();
-    build_individual_graph(
-        &ui,
-        &areas[3],
-        duration_plotvals.to_vec(),
-        "Duration",
-        "Minutes",
-        &RED,
-    )
-    .unwrap();
-    build_individual_graph(
-        &ui,
-        &areas[4],
-        ascent_plotvals.to_vec(),
-        "Elevation Gain",
-        ascent_unit,
-        &CYAN,
-    )
-    .unwrap();
-    build_individual_graph(
-        &ui,
-        &areas[5],
-        descent_plotvals.to_vec(),
-        "Elevation Loss",
-        descent_unit,
-        &YELLOW,
-    )
-    .unwrap();
 
     let _ = root.present();
 }
