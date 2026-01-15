@@ -78,12 +78,6 @@ LABEL_ELEVATION_M = Elevación (m)
 LABEL_TEMP_F = Temperatura (°F)
 LABEL_TEMP_C = Temperatura (°C)
 
-SUMMARY_FILE_LOADED = Archivo cargado.
-SUMMARY_SESSION_HEADER = ============================ Sesión ==================================
-SUMMARY_LAP_HEADER = Vuelta
-SUMMARY_HR_ZONE_HEADER = =================== Tiempo en zonas de FC por sesión ========
-SUMMARY_HR_ZONE_LABEL = Zona
-
 UNIT_FEET = pies
 UNIT_METERS = metros
 UNIT_MILES = millas
@@ -122,13 +116,13 @@ PRETTY_MIN_TEMPERATURE = Temperatura mínima
 PRETTY_MAX_TEMPERATURE = Temperatura máxima
 PRETTY_AVG_TEMPERATURE = Temperatura promedio
 
-JANUARY	= Enero
+JANUARY = Enero
 FEBRUARY = Febrero
 MARCH = Marzo
 APRIL = Abril
 MAY = Mayo
 JUNE = Junio
-JULY = =Julio
+JULY = Julio
 AUGUST = Agosto
 SEPTEMBER = Septiembre
 OCTOBER = Octubre
@@ -138,5 +132,5 @@ DECEMBER = Diciembr
 ONE_WEEK = Última semana
 TWO_WEEKS = Últimas 2 semanas
 THREE_WEEKS = Últimas 3 semanas
-FOUR_WEEKS =  Últimas 4 semanas
+FOUR_WEEKS = Últimas 4 semanas
 YEAR_TO_DATE = En lo que va de año
