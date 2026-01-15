@@ -13,7 +13,7 @@ MESSAGE_FILE_NOT_FOUND = File not found.
 MESSAGE_PERMISSIONS = Unknown error. Permissions problem?
 
 TOOLTIP_TEXT_VIEW = 
-    This section contains a report of lap, heart rate zones, and session summary information.
+    This section contains a report of session summary information.
     (PageUp, PageDown)
 
     The text may be cut and pasted to other applications.

@@ -13,7 +13,7 @@ MESSAGE_FILE_NOT_FOUND = Fichier introuvable.
 MESSAGE_PERMISSIONS = Erreur inconnue. Problème d'autorisations?
 
 TOOLTIP_TEXT_VIEW = 
-    Cette section contient un rapport sur les tours, les zones de fréquence cardiaque et les informations de résumé de session.
+    Cette section contient un rapport et les informations de résumé de session.
     (Page préc, Page suiv)
 
     Le texte peut être copié et collé dans d'autres applications.

@@ -13,7 +13,7 @@ MESSAGE_FILE_NOT_FOUND = Archivo no encontrado.
 MESSAGE_PERMISSIONS = Error desconocido. ¿Problema de permisos?
 
 TOOLTIP_TEXT_VIEW = 
-    Esta sección contiene un informe de vueltas, zonas de frecuencia cardíaca e información resumida de la sesión.
+    Esta sección contiene un un informe de la información del resumen de la sesión.
     (Re Pág, Av Pág)
     
     El texto se puede cortar y pegar en otras aplicaciones.
