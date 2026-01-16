@@ -90,3 +90,9 @@ TWO_WEEKS = Últimas 2 semanas
 THREE_WEEKS = Últimas 3 semanas
 FOUR_WEEKS = Últimas 4 semanas
 YEAR_TO_DATE = En lo que va de año
+
+SUMMARY_DIST_MAX_MIN_AVG = Distancia Máx/Mín/Prom
+SUMMARY_TOTAL_CALORIES = Calorías Totales
+SUMMARY_DUR_MAX_MIN_AVG = Duración Máx/Mín/Prom
+SUMMARY_PACE_FAST_SLOW = Ritmo más Rápido/Lento
+SUMMARY_TOTAL_ASC_DES = Ascenso/Descenso Total

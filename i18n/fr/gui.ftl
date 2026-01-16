@@ -89,3 +89,9 @@ TWO_WEEKS = Dernières 2 semaines
 THREE_WEEKS = Dernières 3 semaines
 FOUR_WEEKS = Dernières 4 semaines
 YEAR_TO_DATE = Cumul annuel
+
+SUMMARY_DIST_MAX_MIN_AVG = Distance Max/Min/Moy
+SUMMARY_TOTAL_CALORIES = Total des Calories
+SUMMARY_DUR_MAX_MIN_AVG = Durée Max/Min/Moy
+SUMMARY_PACE_FAST_SLOW = Allure la plus Rapide/Lente
+SUMMARY_TOTAL_ASC_DES = Dénivelé Positif/Négatif Total

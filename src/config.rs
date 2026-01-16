@@ -17,7 +17,7 @@ pub const TESTER3: &str = "Tony Castronovo";
 pub const SETTINGSFILE: &str = "aggregate.toml";
 
 //Unit of measure system.
-#[derive(Clone)]
+#[derive(Clone, PartialEq)]
 pub enum Units {
     Metric,
     US,

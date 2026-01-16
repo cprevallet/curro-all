@@ -90,3 +90,9 @@ TWO_WEEKS = Two weeks
 THREE_WEEKS = Three weeks
 FOUR_WEEKS = Four weeks
 YEAR_TO_DATE = Year to date
+
+SUMMARY_DIST_MAX_MIN_AVG = Max/Min/Avg Distance
+SUMMARY_TOTAL_CALORIES = Total Calories
+SUMMARY_DUR_MAX_MIN_AVG = Max/Min/Avg Duration
+SUMMARY_PACE_FAST_SLOW = Fastest/Slowest Pace
+SUMMARY_TOTAL_ASC_DES = Total Ascent/Descent

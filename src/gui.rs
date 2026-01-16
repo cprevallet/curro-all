@@ -676,9 +676,109 @@ fn build_summary(stat_collection: &Vec<PlottableData>, ui: &UserInterface) {
     let mut end = ui.text_buffer.end_iter();
     ui.text_buffer.delete(&mut start, &mut end);
 
-    // 2. Insert Table Header
-    let mut header = format!("");
+    if stat_collection.is_empty() {
+        return;
+    }
+
+    // 2. Perform Calculations
+    let count = stat_collection.len() as f64;
+    let mut total_calories: u32 = 0;
+    let mut total_ascent: f64 = 0.0;
+    let mut total_descent: f64 = 0.0;
+
+    let mut max_dist = f64::MIN;
+    let mut min_dist = f64::MAX;
+    let mut sum_dist = 0.0;
+
+    let mut max_dur = f64::MIN;
+    let mut min_dur = f64::MAX;
+    let mut sum_dur = 0.0;
+
+    // In this app, "pace" is stored in enhanced_speed after conversion
+    // A smaller number (e.g., 8:00) is faster than a larger number (e.g., 10:00).
+    let mut fastest_pace = f64::MAX;
+    let mut slowest_pace = f64::MIN;
+
+    for item in stat_collection {
+        let s = item.stats;
+        sum_dist += s.distance;
+        max_dist = max_dist.max(s.distance);
+        min_dist = min_dist.min(s.distance);
+
+        sum_dur += s.duration;
+        max_dur = max_dur.max(s.duration);
+        min_dur = min_dur.min(s.duration);
+
+        total_calories += s.calories as u32;
+        total_ascent += s.ascent as f64;
+        total_descent += s.descent as f64;
+
+        if s.enhanced_speed > 0.0 {
+            fastest_pace = fastest_pace.min(s.enhanced_speed);
+            slowest_pace = slowest_pace.max(s.enhanced_speed);
+        }
+    }
+
+    let pace_formatter = |x: f64| {
+        let mins = x.trunc();
+        let secs = x.fract() * 60.0;
+        format!("{:02.0}:{:02.0}", mins, secs)
+    };
+
+    // 3. Insert Aggregates at the Top
     let selected_units = get_unit_system(&ui.units_widget);
+    let dist_unit = if selected_units == Units::Metric {
+        tr("UNIT_KM", None)
+    } else {
+        tr("UNIT_MILES", None)
+    };
+    let alt_unit = if selected_units == Units::Metric {
+        tr("UNIT_METERS", None)
+    } else {
+        tr("UNIT_FEET", None)
+    };
+
+    let mut summary_text = String::new();
+    summary_text.push_str(&format!(
+        "{}: {:.2} / {:.2} / {:.2} {}\n",
+        tr("SUMMARY_DIST_MAX_MIN_AVG", None),
+        max_dist,
+        min_dist,
+        sum_dist / count,
+        dist_unit
+    ));
+    summary_text.push_str(&format!(
+        "{}: {} kcal\n",
+        tr("SUMMARY_TOTAL_CALORIES", None),
+        total_calories
+    ));
+    summary_text.push_str(&format!(
+        "{}: {:.1} / {:.1} / {:.1} min\n",
+        tr("SUMMARY_DUR_MAX_MIN_AVG", None),
+        max_dur,
+        min_dur,
+        sum_dur / count
+    ));
+    summary_text.push_str(&format!(
+        "{}: {} / {}\n",
+        tr("SUMMARY_PACE_FAST_SLOW", None),
+        pace_formatter(fastest_pace),
+        pace_formatter(slowest_pace)
+    ));
+    summary_text.push_str(&format!(
+        "{}: {:.0} {} / {:.0} {}\n",
+        tr("SUMMARY_TOTAL_ASC_DES", None),
+        total_ascent,
+        alt_unit,
+        total_descent,
+        alt_unit
+    ));
+    summary_text.push_str("\n"); // Spacer before the table
+
+    ui.text_buffer.insert(&mut end, &summary_text);
+
+    // 4. Insert Table Header (Existing Logic)
+    let mut header = String::new();
     match selected_units {
         Units::Metric => {
             header = format!(
@@ -710,35 +810,21 @@ fn build_summary(stat_collection: &Vec<PlottableData>, ui: &UserInterface) {
     ui.text_buffer.insert(&mut end, &header);
     ui.text_buffer.insert(&mut end, &format!("{:-<114}\n", ""));
 
-    // 3. Collect all stats into the PlottableData struct (Parse Once)
-    let mut plottable_collection = stat_collection.clone();
+    // 5. Append Rows
+    let mut sorted_data = stat_collection.clone();
+    sorted_data.sort_by_key(|item| item.timestamp);
 
-    // 4. Sort by timestamp to ensure chronological order in the text view
-    plottable_collection.sort_by_key(|item| item.timestamp);
-
-    // 5. Iterate through the collection and format the strings
-
-    let pace_formatter = |x: &f32| {
-        let mins = x.trunc();
-        let secs = x.fract() * 60.0;
-        format!("{:02.0}:{:02.0}", mins, secs)
-    };
-    for item in plottable_collection {
-        let ts = item.timestamp;
-        let stats = item.stats;
-
+    for item in sorted_data {
         let row = format!(
             "{:<14} | {:>18.2} | {:>12} | {:>18.1} | {:>18} | {:>7.0} | {:>7.0}\n",
-            ts.format("%Y-%m-%d").to_string(),
-            stats.distance,
-            stats.calories,
-            stats.duration,
-            pace_formatter(&(stats.enhanced_speed as f32)),
-            stats.ascent,
-            stats.descent
+            item.timestamp.format("%Y-%m-%d").to_string(),
+            item.stats.distance,
+            item.stats.calories,
+            item.stats.duration,
+            pace_formatter(item.stats.enhanced_speed),
+            item.stats.ascent,
+            item.stats.descent
         );
-
-        // Re-calculate end iterator to ensure we append to the bottom
         let mut end_iter = ui.text_buffer.end_iter();
         ui.text_buffer.insert(&mut end_iter, &row);
     }
