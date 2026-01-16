@@ -209,6 +209,7 @@ pub enum TimeBucket {
     DecemberLastYear,
 
     //Historical Years
+    OneYearsAgo,
     TwoYearsAgo,
     ThreeYearsAgo,
     FourYearsAgo,
@@ -257,7 +258,8 @@ pub fn get_time_range(bucket: TimeBucket) -> (DateTime<Utc>, DateTime<Utc>) {
         }
 
         // --- HISTORICAL YEAR LOGIC ---
-        TimeBucket::TwoYearsAgo
+        TimeBucket::OneYearsAgo
+        | TimeBucket::TwoYearsAgo
         | TimeBucket::ThreeYearsAgo
         | TimeBucket::FourYearsAgo
         | TimeBucket::FiveYearsAgo
@@ -267,6 +269,7 @@ pub fn get_time_range(bucket: TimeBucket) -> (DateTime<Utc>, DateTime<Utc>) {
         | TimeBucket::NineYearsAgo
         | TimeBucket::TenYearsAgo => {
             let offset = match bucket {
+                TimeBucket::OneYearsAgo => 1,
                 TimeBucket::TwoYearsAgo => 2,
                 TimeBucket::ThreeYearsAgo => 3,
                 TimeBucket::FourYearsAgo => 4,
@@ -373,6 +376,7 @@ impl TimeBucket {
             OctoberLastYear,
             NovemberLastYear,
             DecemberLastYear,
+            OneYearsAgo,
             TwoYearsAgo,
             ThreeYearsAgo,
             FourYearsAgo,
@@ -427,6 +431,7 @@ impl TimeBucket {
             TimeBucket::DecemberLastYear => format!("{} {}", tr("DECEMBER", None), last_year),
 
             // Historical Variants
+            TimeBucket::OneYearsAgo => (this_year - 1).to_string(),
             TimeBucket::TwoYearsAgo => (this_year - 2).to_string(),
             TimeBucket::ThreeYearsAgo => (this_year - 3).to_string(),
             TimeBucket::FourYearsAgo => (this_year - 4).to_string(),
