@@ -388,11 +388,10 @@ pub fn get_metric_vec(
     data
 }
 
-/// Generates a LineSeries chart for a specific metric.
+/// Generates a bar chart for a specific metric.
 pub fn build_individual_graph(
     ui: &UserInterface,
     a: &plotters::drawing::DrawingArea<CairoBackend<'_>, plotters::coord::Shift>,
-    // results: &[(DateTime<Utc>, PathBuf)],
     plotvals: Vec<(DateTime<Utc>, f64)>,
     metric_name: &str,
     unit_label: &str,
@@ -402,25 +401,27 @@ pub fn build_individual_graph(
         return Ok(());
     }
 
-    let mut num_x_label = 16; // default
+    let mut num_x_label = 16;
     let (start_date, end_date) = get_selected_start_end(&ui);
+
+    // Logic for determining X-axis label density based on timeframe
     if let Some(selected_variant) = get_time_bucket(&ui) {
         if selected_variant == TimeBucket::OneWeek {
-            num_x_label = 7; // days in a single week
+            num_x_label = 7;
         }
-
         if format!("{:?}", selected_variant).contains("YearsAgo") {
             num_x_label = 12;
         }
     }
-    // Add some margin to the top of the graph.
-    let max_val = plotvals.iter().map(|(_, v)| *v).fold(0.0, f64::max) * 1.1;
 
+    let max_val = plotvals.iter().map(|(_, v)| *v).fold(0.0, f64::max) * 1.1;
     let is_dark = StyleManager::default().is_dark();
+
     let mut caption_style = ("sans-serif", 16, &GREY_800).into_text_style(a);
     if is_dark {
         caption_style = ("sans-serif", 16, &GREY_200).into_text_style(a);
     }
+
     let mut chart = ChartBuilder::on(&a)
         .caption(format!("{}", metric_name), caption_style)
         .margin(20)
@@ -428,32 +429,17 @@ pub fn build_individual_graph(
         .y_label_area_size(60)
         .build_cartesian_2d(start_date..end_date, 0.0..max_val)?;
 
+    // Mesh and Axis Styles (keeping your dark/light logic)
     let mut axis_text_style = ("sans-serif", 10, &GREY_800).into_text_style(a);
-    if is_dark {
-        axis_text_style = ("sans-serif", 10, &GREY_200).into_text_style(a);
-    }
-    let light_line_style = ShapeStyle {
-        color: color.mix(0.05),
-        filled: false,
-        stroke_width: 1,
-    };
-    let bold_line_style = ShapeStyle {
-        color: color.mix(0.10),
-        filled: false,
-        stroke_width: 2,
-    };
     let mut axis_style = ShapeStyle {
         color: GREY_600.mix(1.0),
         filled: false,
         stroke_width: 2,
     };
+
     if is_dark {
-        axis_style = ShapeStyle {
-            // color: color.mix(0.3),
-            color: GREY_400.mix(1.0),
-            filled: false,
-            stroke_width: 2,
-        };
+        axis_text_style = ("sans-serif", 10, &GREY_200).into_text_style(a);
+        axis_style.color = GREY_400.mix(1.0);
     }
 
     chart
@@ -464,24 +450,27 @@ pub fn build_individual_graph(
         .y_label_style(axis_text_style.clone())
         .x_label_formatter(&|d| d.format("%m-%d").to_string())
         .y_desc(unit_label)
-        .light_line_style(light_line_style)
-        .bold_line_style(bold_line_style)
         .axis_style(axis_style)
         .draw()?;
 
-    chart.draw_series(LineSeries::new(
-        plotvals.iter().map(|(date, val)| (*date, *val)),
-        &color,
-    ))?;
+    // --- BAR GRAPH LOGIC START ---
+    // We use a Rectangle series to simulate bars.
+    // The width is calculated based on the timeframe to ensure bars don't overlap too much.
+    chart.draw_series(plotvals.iter().map(|(date, val)| {
+        let x0 = *date;
+        // Shift x1 slightly to create bar width (e.g., 1 day or a few hours)
+        let x1 = *date + chrono::Duration::hours(12);
+        let bar_style = color.filled();
 
-    chart.draw_series(
-        plotvals
-            .iter()
-            .map(|(date, val)| Circle::new((*date, *val), 3, color.filled())),
-    )?;
+        // Optional: add a border to the bars
+        let rect = Rectangle::new([(x0, 0.0), (x1, *val)], bar_style);
+        rect
+    }))?;
+    // --- BAR GRAPH LOGIC END ---
 
     Ok(())
 }
+
 // Use plotters.rs to draw a graph on the drawing area.
 fn draw_graphs(
     ui: &UserInterface,
@@ -729,6 +718,7 @@ fn build_summary(stat_collection: &Vec<PlottableData>, ui: &UserInterface) {
     let attach_label = |grid: &gtk4::Grid, text: &str, col, row, bold: bool| {
         let label = Label::new(Some(text));
         label.set_halign(gtk4::Align::Start);
+        label.set_selectable(true);
         if bold {
             label.set_markup(&format!("<b>{}</b>", text));
         }
@@ -866,6 +856,7 @@ fn build_summary(stat_collection: &Vec<PlottableData>, ui: &UserInterface) {
             let val_label = Label::builder()
                 .label(&format!("<b>{}</b>", text))
                 .use_markup(true)
+                .selectable(true)
                 .halign(gtk4::Align::Start)
                 .build();
             ui.main_grid.attach(&val_label, col as i32, row, 1, 1);
@@ -901,6 +892,7 @@ fn build_summary(stat_collection: &Vec<PlottableData>, ui: &UserInterface) {
         let total_label = Label::builder()
             .label(&format!("<b>{}</b>", text))
             .use_markup(true)
+            .selectable(true)
             .halign(gtk4::Align::Start)
             .build();
         ui.main_grid
