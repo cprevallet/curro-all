@@ -5,12 +5,11 @@ use std::fs;
 use std::path::Path;
 
 // Meta-program info. Displayed in about dialog.
-pub const ICON_NAME: &str = "siliconsneaker2";
+pub const ICON_NAME: &str = "aggregate";
 pub const APP_ID: &str = "com.github.cprevallet.aggregate";
 pub const PROGRAM_NAME: &str = "Aggregate";
 pub const COPYRIGHT: &str = "© 2026";
 pub const AUTHOR: &str = "Craig S. Prevallet <penguintx@hotmail.com>";
-pub const ARTIST1: &str = "Amos Kofi Commey";
 pub const TESTER1: &str = "Gabriel A. Prevallet";
 pub const TESTER2: &str = "Jacob Thymann Nielsen";
 pub const TESTER3: &str = "Tony Castronovo";
