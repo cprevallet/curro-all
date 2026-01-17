@@ -871,4 +871,39 @@ fn build_summary(stat_collection: &Vec<PlottableData>, ui: &UserInterface) {
             ui.main_grid.attach(&val_label, col as i32, row, 1, 1);
         }
     }
+    // --- Append Totals Row ---
+    let totals_row = last_data_row + 4 + 3; // Positioned after Max, Min, and Avg
+
+    // Row Title: "Total" (Using your assumed translation key)
+    let total_row_title = "Total";
+    let totals_title = Label::builder()
+        .label(&format!("<b>{}</b>", total_row_title))
+        .use_markup(true)
+        .halign(gtk4::Align::Start)
+        .build();
+    ui.main_grid.attach(&totals_title, 0, totals_row, 1, 1);
+
+    for col in 1..7 {
+        // Skip the Pace column (Index 4 in the grid corresponds to sums[3])
+        if col == 4 {
+            continue;
+        }
+
+        let total_val = sums[col - 1];
+
+        // Formatting: Use whole numbers for Calories and Elevation, 2 decimals for others
+        let text = if col == 2 || col >= 5 {
+            format!("{:.0}", total_val)
+        } else {
+            format!("{:.2}", total_val)
+        };
+
+        let total_label = Label::builder()
+            .label(&format!("<b>{}</b>", text))
+            .use_markup(true)
+            .halign(gtk4::Align::Start)
+            .build();
+        ui.main_grid
+            .attach(&total_label, col as i32, totals_row, 1, 1);
+    }
 }
