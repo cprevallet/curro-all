@@ -16,8 +16,6 @@ TOOLTIP_TEXT_VIEW =
     This section contains a report of session summary information.
     (PageUp, PageDown)
 
-    The text may be cut and pasted to other applications.
-
 TOOLTIP_ABOUT_BUTTON = Show program credits, license, and copyright information. (Ctrl+A)
 
 TOOLTIP_OPEN_BUTTON = 

@@ -16,8 +16,6 @@ TOOLTIP_TEXT_VIEW =
     Esta sección contiene un un informe de la información del resumen de la sesión.
     (Re Pág, Av Pág)
     
-    El texto se puede cortar y pegar en otras aplicaciones.
-
 TOOLTIP_ABOUT_BUTTON = Mostrar créditos del programa, licencia e información de derechos de autor. (Ctrl+A)
 
 TOOLTIP_OPEN_BUTTON = 

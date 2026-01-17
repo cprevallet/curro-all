@@ -16,8 +16,6 @@ TOOLTIP_TEXT_VIEW =
     Cette section contient un rapport et les informations de résumé de session.
     (Page préc, Page suiv)
 
-    Le texte peut être copié et collé dans d'autres applications.
-
 TOOLTIP_ABOUT_BUTTON = Afficher les crédits du programme, la licence et les informations sur le droit d'auteur. (Ctrl+A)
 
 TOOLTIP_OPEN_BUTTON = 
