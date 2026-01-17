@@ -95,3 +95,7 @@ SUMMARY_TOTAL_CALORIES = Total des Calories
 SUMMARY_DUR_MAX_MIN_AVG = Durée Max/Min/Moy
 SUMMARY_PACE_FAST_SLOW = Allure la plus Rapide/Lente
 SUMMARY_TOTAL_ASC_DES = Dénivelé Positif/Négatif Total
+
+MAXIMUM = Maxium
+MINIMUM = Minimum
+AVERAGE = Moyenne 

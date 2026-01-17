@@ -96,3 +96,7 @@ SUMMARY_TOTAL_CALORIES = Total Calories
 SUMMARY_DUR_MAX_MIN_AVG = Max/Min/Avg Duration
 SUMMARY_PACE_FAST_SLOW = Fastest/Slowest Pace
 SUMMARY_TOTAL_ASC_DES = Total Ascent/Descent
+
+MAXIMUM = Maximum
+MINIMUM = Minimum
+AVERAGE = Average

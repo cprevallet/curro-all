@@ -11,7 +11,7 @@ use gtk4::glib::clone;
 use gtk4::prelude::*;
 use gtk4::{
     Button, DrawingArea, DropDown, Frame, HeaderBar, Image, Label, MenuButton, Orientation,
-    Popover, ScrolledWindow, Spinner, StringList, StringObject, TextBuffer, TextView, gdk,
+    Popover, ScrolledWindow, Spinner, StringList, StringObject, gdk,
 };
 use libadwaita::prelude::*;
 use libadwaita::{Application, ApplicationWindow, StyleManager, WindowTitle};
@@ -47,13 +47,14 @@ pub struct UserInterface {
     pub button_box: gtk4::Box,
     pub main_pane: gtk4::Paned,
     pub btn: Button,
-    pub text_view: TextView,
-    pub text_buffer: TextBuffer,
+    // pub text_view: TextView,
+    // pub text_buffer: TextBuffer,
+    pub main_grid: gtk4::Grid, // Replaces TextView
+    pub scrolled_window: ScrolledWindow,
     pub frame_left: Frame,
     pub frame_right: Frame,
     pub left_frame_pane: gtk4::Paned,
     pub right_frame_pane: gtk4::Paned,
-    pub scrolled_window: ScrolledWindow,
     pub da_window: ScrolledWindow,
     pub curr_time_label: Label,
     pub controls_box: gtk4::Box,
@@ -118,7 +119,7 @@ pub fn instantiate_ui(app: &Application) -> UserInterface {
             .spacing(10)
             .build(),
         main_pane: gtk4::Paned::builder()
-            .orientation(Orientation::Vertical)
+            .orientation(Orientation::Horizontal)
             .build(),
         btn: Button::builder()
             .margin_top(5)
@@ -128,13 +129,14 @@ pub fn instantiate_ui(app: &Application) -> UserInterface {
             .height_request(30)
             .width_request(50)
             .build(),
-        text_view: TextView::builder()
-            .monospace(true)
-            .editable(false)
-            .left_margin(25)
-            .right_margin(25)
+        main_grid: gtk4::Grid::builder()
+            .column_spacing(12)
+            .row_spacing(6)
+            .margin_start(10)
+            .margin_end(10)
+            .margin_top(10)
             .build(),
-        text_buffer: TextBuffer::builder().build(),
+
         frame_left: Frame::builder().margin_bottom(5).build(),
         frame_right: Frame::builder().build(),
         left_frame_pane: gtk4::Paned::builder()
@@ -198,10 +200,9 @@ pub fn instantiate_ui(app: &Application) -> UserInterface {
     );
     ui.about_btn.set_label(&ui.about_label);
     ui.units_widget.set_model(Some(&ui.uom));
-    ui.text_view.set_buffer(Some(&ui.text_buffer));
-    ui.text_view
+    ui.scrolled_window.set_child(Some(&ui.main_grid));
+    ui.scrolled_window
         .set_tooltip_text(Some(&tr("TOOLTIP_TEXT_VIEW", None)));
-    ui.scrolled_window.set_child(Some(&ui.text_view));
     ui.about_btn
         .set_tooltip_text(Some(&tr("TOOLTIP_ABOUT_BUTTON", None)));
     ui.menu_box.append(&ui.units_widget);
@@ -671,53 +672,87 @@ fn update_map_graph_and_summary_widgets(
 // #####################################################################
 // Build a summary using the PlottableData struct
 fn build_summary(stat_collection: &Vec<PlottableData>, ui: &UserInterface) {
-    // 1. Clear out the existing buffer
-    let mut start = ui.text_buffer.start_iter();
-    let mut end = ui.text_buffer.end_iter();
-    ui.text_buffer.delete(&mut start, &mut end);
+    // 1. Calculate Aggregates
+    let count = stat_collection.len() as f64;
+    let mut max_vals = [f64::MIN; 6]; // Dist, Cal, Dur, Pace(Fast), Asc, Des
+    let mut min_vals = [f64::MAX; 6];
+    let mut sums = [0.0; 6];
+
+    for item in stat_collection {
+        let s = &item.stats;
+        let vals = [
+            s.distance,
+            s.calories as f64,
+            s.duration,
+            s.enhanced_speed,
+            s.ascent as f64,
+            s.descent as f64,
+        ];
+
+        for i in 0..6 {
+            max_vals[i] = max_vals[i].max(vals[i]);
+            // For pace, we often want the "fastest" (minimum number)
+            if vals[i] > 0.0 {
+                min_vals[i] = min_vals[i].min(vals[i]);
+            }
+            sums[i] += vals[i];
+        }
+    }
+
+    // 1. Clear existing children from the grid
+    let mut child = ui.main_grid.first_child();
+    while let Some(widget) = child {
+        child = widget.next_sibling();
+        ui.main_grid.remove(&widget);
+    }
 
     if stat_collection.is_empty() {
         return;
     }
 
-    // 2. Perform Calculations
-    let count = stat_collection.len() as f64;
-    let mut total_calories: u32 = 0;
-    let mut total_ascent: f64 = 0.0;
-    let mut total_descent: f64 = 0.0;
+    // 2. Unit Logic (Keep your existing conversion logic)
+    let selected_units = get_unit_system(&ui.units_widget);
+    let (dist_label, alt_label, pace_label) = match selected_units {
+        Units::Metric => (
+            tr("LABEL_DISTANCE_KM", None),
+            "m",
+            tr("LABEL_PACE_METRIC", None),
+        ),
+        _ => (
+            tr("LABEL_DISTANCE_MILES", None),
+            "ft",
+            tr("LABEL_PACE_US", None),
+        ),
+    };
 
-    let mut max_dist = f64::MIN;
-    let mut min_dist = f64::MAX;
-    let mut sum_dist = 0.0;
-
-    let mut max_dur = f64::MIN;
-    let mut min_dur = f64::MAX;
-    let mut sum_dur = 0.0;
-
-    // In this app, "pace" is stored in enhanced_speed after conversion
-    // A smaller number (e.g., 8:00) is faster than a larger number (e.g., 10:00).
-    let mut fastest_pace = f64::MAX;
-    let mut slowest_pace = f64::MIN;
-
-    for item in stat_collection {
-        let s = item.stats;
-        sum_dist += s.distance;
-        max_dist = max_dist.max(s.distance);
-        min_dist = min_dist.min(s.distance);
-
-        sum_dur += s.duration;
-        max_dur = max_dur.max(s.duration);
-        min_dur = min_dur.min(s.duration);
-
-        total_calories += s.calories as u32;
-        total_ascent += s.ascent as f64;
-        total_descent += s.descent as f64;
-
-        if s.enhanced_speed > 0.0 {
-            fastest_pace = fastest_pace.min(s.enhanced_speed);
-            slowest_pace = slowest_pace.max(s.enhanced_speed);
+    // 3. Helper to attach styled labels
+    let attach_label = |grid: &gtk4::Grid, text: &str, col, row, bold: bool| {
+        let label = Label::new(Some(text));
+        label.set_halign(gtk4::Align::Start);
+        if bold {
+            label.set_markup(&format!("<b>{}</b>", text));
         }
+        grid.attach(&label, col, row, 1, 1);
+    };
+
+    // 4. Create Headers (Row 0)
+    let headers = [
+        tr("LABEL_DATE_TIME", None),
+        dist_label,
+        "Calories".to_string(),
+        tr("LABEL_DURATION", None),
+        pace_label,
+        format!("Asc({})", alt_label),
+        format!("Des({})", alt_label),
+    ];
+
+    for (col, text) in headers.iter().enumerate() {
+        attach_label(&ui.main_grid, text, col as i32, 0, true);
     }
+
+    // 5. Populate Data Rows
+    let mut sorted_data = stat_collection.clone();
+    sorted_data.sort_by_key(|item| item.timestamp);
 
     let pace_formatter = |x: f64| {
         let mins = x.trunc();
@@ -725,107 +760,115 @@ fn build_summary(stat_collection: &Vec<PlottableData>, ui: &UserInterface) {
         format!("{:02.0}:{:02.0}", mins, secs)
     };
 
-    // 3. Insert Aggregates at the Top
-    let selected_units = get_unit_system(&ui.units_widget);
-    let dist_unit = if selected_units == Units::Metric {
-        tr("UNIT_KM", None)
-    } else {
-        tr("UNIT_MILES", None)
-    };
-    let alt_unit = if selected_units == Units::Metric {
-        tr("UNIT_METERS", None)
-    } else {
-        tr("UNIT_FEET", None)
-    };
+    for (row_idx, item) in sorted_data.iter().enumerate() {
+        let row = (row_idx + 1) as i32; // Offset by 1 for header
 
-    let mut summary_text = String::new();
-    summary_text.push_str(&format!(
-        "{}: {:.2} / {:.2} / {:.2} {}\n",
-        tr("SUMMARY_DIST_MAX_MIN_AVG", None),
-        max_dist,
-        min_dist,
-        sum_dist / count,
-        dist_unit
-    ));
-    summary_text.push_str(&format!(
-        "{}: {} kcal\n",
-        tr("SUMMARY_TOTAL_CALORIES", None),
-        total_calories
-    ));
-    summary_text.push_str(&format!(
-        "{}: {:.1} / {:.1} / {:.1} min\n",
-        tr("SUMMARY_DUR_MAX_MIN_AVG", None),
-        max_dur,
-        min_dur,
-        sum_dur / count
-    ));
-    summary_text.push_str(&format!(
-        "{}: {} / {}\n",
-        tr("SUMMARY_PACE_FAST_SLOW", None),
-        pace_formatter(fastest_pace),
-        pace_formatter(slowest_pace)
-    ));
-    summary_text.push_str(&format!(
-        "{}: {:.0} {} / {:.0} {}\n",
-        tr("SUMMARY_TOTAL_ASC_DES", None),
-        total_ascent,
-        alt_unit,
-        total_descent,
-        alt_unit
-    ));
-    summary_text.push_str("\n"); // Spacer before the table
-
-    ui.text_buffer.insert(&mut end, &summary_text);
-
-    // 4. Insert Table Header (Existing Logic)
-    let mut header = String::new();
-    match selected_units {
-        Units::Metric => {
-            header = format!(
-                "{:<14} | {:>18} | {:>12} | {:>18} | {:>18} | {:>7} | {:>7}\n",
-                tr("LABEL_DATE_TIME", None),
-                tr("LABEL_DISTANCE_KM", None),
-                "Cal (kcal)",
-                tr("LABEL_DURATION", None),
-                tr("LABEL_PACE_METRIC", None),
-                "Asc(m)",
-                "Des(m)"
-            );
-        }
-        Units::US => {
-            header = format!(
-                "{:<14} | {:>18} | {:>12} | {:>18} | {:>18} | {:>7} | {:>7}\n",
-                tr("LABEL_DATE_TIME", None),
-                tr("LABEL_DISTANCE_MILES", None),
-                "Cal (kcal)",
-                tr("LABEL_DURATION", None),
-                tr("LABEL_PACE_US", None),
-                "Asc(ft)",
-                "Des(ft)"
-            );
-        }
-        _ => {}
-    }
-
-    ui.text_buffer.insert(&mut end, &header);
-    ui.text_buffer.insert(&mut end, &format!("{:-<114}\n", ""));
-
-    // 5. Append Rows
-    let mut sorted_data = stat_collection.clone();
-    sorted_data.sort_by_key(|item| item.timestamp);
-
-    for item in sorted_data {
-        let row = format!(
-            "{:<14} | {:>18.2} | {:>12} | {:>18.1} | {:>18} | {:>7.0} | {:>7.0}\n",
-            item.timestamp.format("%Y-%m-%d").to_string(),
-            item.stats.distance,
-            item.stats.calories,
-            item.stats.duration,
-            pace_formatter(item.stats.enhanced_speed),
-            item.stats.ascent,
-            item.stats.descent
+        attach_label(
+            &ui.main_grid,
+            &item.timestamp.format("%Y-%m-%d").to_string(),
+            0,
+            row,
+            false,
         );
-        let mut end_iter = ui.text_buffer.end_iter();
-        ui.text_buffer.insert(&mut end_iter, &row);
+        attach_label(
+            &ui.main_grid,
+            &format!("{:.2}", item.stats.distance),
+            1,
+            row,
+            false,
+        );
+        attach_label(
+            &ui.main_grid,
+            &item.stats.calories.to_string(),
+            2,
+            row,
+            false,
+        );
+        attach_label(
+            &ui.main_grid,
+            &format!("{:.1}", item.stats.duration),
+            3,
+            row,
+            false,
+        );
+        attach_label(
+            &ui.main_grid,
+            &pace_formatter(item.stats.enhanced_speed),
+            4,
+            row,
+            false,
+        );
+        attach_label(
+            &ui.main_grid,
+            &format!("{:.0}", item.stats.ascent),
+            5,
+            row,
+            false,
+        );
+        attach_label(
+            &ui.main_grid,
+            &format!("{:.0}", item.stats.descent),
+            6,
+            row,
+            false,
+        );
+    }
+    // ... [Previous code for populating session data rows] ...
+    let last_data_row = sorted_data.len() as i32;
+
+    // 3. Append Aggregate Rows
+    // for (i, (en, fr, es)) in aggregate_labels.iter().enumerate() {
+    for i in 0..3 {
+        let row = last_data_row + 4 + i as i32;
+
+        // Choose label based on current locale or a setting
+        // For this example, we'll use a placeholder logic
+        let mut row_title: String = "".to_string();
+        match i {
+            0 => row_title = tr("MAXIMUM", None),
+            1 => row_title = tr("MINIMUM", None),
+            2 => row_title = tr("AVERAGE", None),
+            _ => (),
+        }
+        // Title Cell
+        let title_label = Label::builder()
+            .label(&format!("<b>{}</b>", row_title))
+            .use_markup(true)
+            .halign(gtk4::Align::Start)
+            .build();
+        ui.main_grid.attach(&title_label, 0, row, 1, 1);
+
+        // Value Cells
+        for col in 1..7 {
+            let val = match i {
+                0 => {
+                    if col == 4 {
+                        min_vals[col - 1]
+                    } else {
+                        max_vals[col - 1]
+                    }
+                } // Pace Max is actually the min number
+                1 => {
+                    if col == 4 {
+                        max_vals[col - 1]
+                    } else {
+                        min_vals[col - 1]
+                    }
+                }
+                _ => sums[col - 1] / count,
+            };
+
+            let text = if col == 4 {
+                pace_formatter(val)
+            } else {
+                format!("{:.2}", val)
+            };
+            let val_label = Label::builder()
+                .label(&format!("<b>{}</b>", text))
+                .use_markup(true)
+                .halign(gtk4::Align::Start)
+                .build();
+            ui.main_grid.attach(&val_label, col as i32, row, 1, 1);
+        }
     }
 }
