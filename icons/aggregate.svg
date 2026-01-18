@@ -1,22 +1,23 @@
 <svg width="200" height="200" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
-  <defs>
-    <linearGradient id="companionGrad" x1="0%" y1="0%" x2="100%" y2="0%">
-      <stop offset="0%" style="stop-color:#a29bfe;stop-opacity:1" />
-      <stop offset="100%" style="stop-color:#6c5ce7;stop-opacity:1" />
-    </linearGradient>
-  </defs>
-
-  <path d="M20,100 
-           Q60,20 100,100 
-           T180,100" 
-        fill="none" 
-        stroke="url(#companionGrad)" 
-        stroke-width="18" 
-        stroke-linecap="round" />
-
-  <circle cx="100" cy="100" r="8" fill="#2d3436" stroke="#ffffff" stroke-width="3" />
-  <circle cx="60" cy="60" r="6" fill="#2d3436" stroke="#ffffff" stroke-width="3" />
-  <circle cx="140" cy="140" r="6" fill="#2d3436" stroke="#ffffff" stroke-width="3" />
+  <rect x="45" y="110" width="22" height="40" rx="4" fill="#2ecc71" />
   
-  <circle cx="180" cy="100" r="5" fill="#e74c3c" />
+  <rect x="77" y="85" width="22" height="65" rx="4" fill="#3498db" />
+  
+  <rect x="109" y="60" width="22" height="90" rx="4" fill="#e74c3c" />
+  
+  <rect x="141" y="95" width="22" height="55" rx="4" fill="#1abc9c" />
+
+  <path d="M 40 155 H 168" stroke="#636e72" stroke-width="4" stroke-linecap="round" opacity="0.8"/>
+
+  <path d="M 56 110 L 88 85 L 120 60 L 152 95" 
+        fill="none" 
+        stroke="#fab1a0" 
+        stroke-width="3" 
+        stroke-linejoin="round" 
+        stroke-linecap="round"/>
+  
+  <circle cx="56" cy="110" r="4" fill="#fab1a0"/>
+  <circle cx="88" cy="85" r="4" fill="#fab1a0"/>
+  <circle cx="120" cy="60" r="4" fill="#fab1a0"/>
+  <circle cx="152" cy="95" r="4" fill="#fab1a0"/>
 </svg>
