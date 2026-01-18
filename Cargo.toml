@@ -40,9 +40,9 @@ priority = "optional"
 license-file = ["LICENSE", "0"]
 assets = [
  ["target/release/aggregate", "/usr/local/bin/", "755"],
- ["./i18n/es/gui.ftl", "/usr/local/i18n/es/gui.ftl", "644"],
- ["./i18n/fr/gui.ftl", "/usr/local/i18n/fr/gui.ftl", "644"],
- ["./i18n/en-US/gui.ftl", "/usr/local/i18n/en-US/gui.ftl", "644"],
+ ["./i18n/es/gui_aggregate.ftl", "/usr/local/i18n/es/gui_aggregate.ftl", "644"],
+ ["./i18n/fr/gui_aggregate.ftl", "/usr/local/i18n/fr/gui_aggregate.ftl", "644"],
+ ["./i18n/en-US/gui_aggregate.ftl", "/usr/local/i18n/en-US/gui_aggregate.ftl", "644"],
  ["./aggregate.desktop", "/usr/share/applications/aggregate.desktop", "644"],
  ["./icons/aggregate.svg", "/usr/share/icons/hicolor/scalable/apps/aggregate.svg", "644"],
  ["README.md", "usr/local/share/doc/aggregate/README.md", "644"],
