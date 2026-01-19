@@ -29,14 +29,14 @@ FunctionEnd
 ;General
 
   ;Name and file
-  Name "Aggregate"
-  OutFile "Aggregate Windows x64 Setup.exe"
+  Name "Curro-All"
+  OutFile "Curro-All Windows x64 Setup.exe"
 
   ;Default installation folder
-  InstallDir "$PROGRAMFILES64\Aggregate"
+  InstallDir "$PROGRAMFILES64\Curro-All"
 
   ;Get installation folder from registry if available
-  InstallDirRegKey HKCU "Software\Aggregate" ""
+  InstallDirRegKey HKCU "Software\Curro-All" ""
 
   ;Request application privileges for Windows Vista
   RequestExecutionLevel admin
@@ -58,7 +58,7 @@ FunctionEnd
 
   ;Start Menu Folder Page Configuration
   !define MUI_STARTMENUPAGE_REGISTRY_ROOT "HKCU" 
-  !define MUI_STARTMENUPAGE_REGISTRY_KEY "Software\Aggregate" 
+  !define MUI_STARTMENUPAGE_REGISTRY_KEY "Software\Curro-All" 
   !define MUI_STARTMENUPAGE_REGISTRY_VALUENAME "Start Menu Folder"
   
   !insertmacro MUI_PAGE_STARTMENU Application $StartMenuFolder
@@ -107,14 +107,14 @@ Section "Components" Components
   File LICENSE
   
   ;Store installation folder
-  WriteRegStr HKCU "Software\Aggregate" "" $INSTDIR
+  WriteRegStr HKCU "Software\Curro-All" "" $INSTDIR
   
   ; Store file association
-  WriteRegStr HKCR ".fit" "" "Aggregate"
-  WriteRegStr HKCR "Aggregate" "" "Aggregate File"
-  WriteRegStr HKCR "Aggregate\DefaultIcon" "" "$INSTDIR\\icons\aggregate.ico,1"
-  WriteRegStr HKCR "Aggregate\shell\view" "" "View with Aggregate"
-  WriteRegStr HKCR "Aggregate\shell\view\command" "" '"$INSTDIR\\bin\aggregate.exe" "%1"'
+  WriteRegStr HKCR ".fit" "" "Curro-All"
+  WriteRegStr HKCR "Curro-All" "" "Curro-All File"
+  WriteRegStr HKCR "Curro-All\DefaultIcon" "" "$INSTDIR\\icons\curro-all.ico,1"
+  WriteRegStr HKCR "Curro-All\shell\view" "" "View with Curro-All"
+  WriteRegStr HKCR "Curro-All\shell\view\command" "" '"$INSTDIR\\bin\curro-all.exe" "%1"'
 
   ;Create uninstaller
   WriteUninstaller "$INSTDIR\Uninstall.exe"
@@ -123,9 +123,9 @@ Section "Components" Components
     
     ;Create shortcuts
     CreateDirectory "$SMPROGRAMS\$StartMenuFolder"
-    CreateShortCut "$SMPROGRAMS\$StartMenuFolder\Uninstall.lnk" "$INSTDIR\Uninstall.exe"  "" "$INSTDIR\\icons\\aggregate.ico" 0
-    CreateShortCut "$SMPROGRAMS\$StartMenuFolder\Aggregate.lnk" "$INSTDIR\\bin\\aggregate" "" "$INSTDIR\\icons\\aggregate.ico" 0
-    ;CreateShortCut "$SMPROGRAMS\$StartMenuFolder\Aggregate_Documentation.lnk" "$INSTDIR\\doc\\Aggregate User Documentation.pdf" "" "$INSTDIR\\icons\\aggregate.ico" 0
+    CreateShortCut "$SMPROGRAMS\$StartMenuFolder\Uninstall.lnk" "$INSTDIR\Uninstall.exe"  "" "$INSTDIR\\icons\\curro-all.ico" 0
+    CreateShortCut "$SMPROGRAMS\$StartMenuFolder\Curro-All.lnk" "$INSTDIR\\bin\\curro-all" "" "$INSTDIR\\icons\\curro-all.ico" 0
+    ;CreateShortCut "$SMPROGRAMS\$StartMenuFolder\Curro-All_Documentation.lnk" "$INSTDIR\\doc\\Curro-All User Documentation.pdf" "" "$INSTDIR\\icons\\curro-all.ico" 0
   
   !insertmacro MUI_STARTMENU_WRITE_END
 
@@ -139,18 +139,18 @@ Section "Uninstall"
 
   !insertmacro MUI_STARTMENU_GETFOLDER Application $StartMenuFolder
     
-  Delete "$SMPROGRAMS\$StartMenuFolder\Aggregate.lnk" 
+  Delete "$SMPROGRAMS\$StartMenuFolder\Curro-All.lnk" 
   Delete "$SMPROGRAMS\$StartMenuFolder\Uninstall.lnk"
-  ;Delete "$SMPROGRAMS\$StartMenuFolder\Aggregate_Documentation.lnk"
+  ;Delete "$SMPROGRAMS\$StartMenuFolder\Curro-All_Documentation.lnk"
   RMDir "$SMPROGRAMS\$StartMenuFolder"
   
   ;nsExec::Exec 'set STATIC_FILES ""'
 
-  DeleteRegKey /ifempty HKCU "Software\Aggregate"
+  DeleteRegKey /ifempty HKCU "Software\Curro-All"
   ReadRegStr $R0 HKCR ".fit" ""
-  StrCmp $R0 "Aggregate" 0 +2
+  StrCmp $R0 "Curro-All" 0 +2
     DeleteRegKey HKCR ".fit"
-  DeleteRegKey HKCR "Aggregate"
+  DeleteRegKey HKCR "Curro-All"
 
 
 SectionEnd

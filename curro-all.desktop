@@ -1,12 +1,12 @@
 [Desktop Entry]
 Version=1.0
-Name=Aggregate
+Name=Curro-All
 GenericName=Garmin Watch File Viewer
 Comment=View runs from your Garmin brand watch
 # environmental file vars + executable + executable arguments
-MimeType=application/x-aggregate
-Exec=aggregate
-Icon=aggregate
+MimeType=application/x-curro-all
+Exec=curro-all
+Icon=curro-all
 Terminal=false
 Type=Application
 Categories=Utility;

@@ -807,7 +807,7 @@ fn build_summary(stat_collection: &Vec<PlottableData>, ui: &UserInterface) {
     let last_data_row = sorted_data.len() as i32;
 
     // 3. Append Aggregate Rows
-    // for (i, (en, fr, es)) in aggregate_labels.iter().enumerate() {
+    // for (i, (en, fr, es)) in curro-all_labels.iter().enumerate() {
     for i in 0..3 {
         let row = last_data_row + 4 + i as i32;
 
