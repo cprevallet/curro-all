@@ -186,7 +186,7 @@ pub fn instantiate_ui(app: &Application) -> UserInterface {
             .build(),
         da: DrawingArea::builder()
             .width_request(400)
-            .margin_end(40)
+            .margin_end(10)
             .build(),
         lookup: DashMap::new(),
     };
