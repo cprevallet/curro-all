@@ -93,8 +93,8 @@ Section "Components" Components
   CreateDirectory $INSTDIR\icons
   SetOutPath "$INSTDIR\\bin"
   File /r "bin\"
-  SetOutPath "$INSTDIR\\doc"
-  File /r "doc\"
+;  SetOutPath "$INSTDIR\\doc"
+;  File /r "doc\"
   SetOutPath "$INSTDIR\\etc"
   File /r "etc\"
   SetOutPath "$INSTDIR\\lib"
