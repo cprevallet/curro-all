@@ -11,3 +11,6 @@ that stores files in the Fit Format.
 - Support for multiple languages is provided English, French, Spanish.
 - Support for multiple operating systems is provided Windows 10/11 and Debian Linux.
 - The program is GPL licensed and open-source.
+
+# About the name
+Curro is Latin for "I Run"
