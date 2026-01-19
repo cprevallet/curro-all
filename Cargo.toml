@@ -33,7 +33,7 @@ plotters = "0.3.7"
 
 [package.metadata.deb]
 maintainer = "Craig Prevallet <craig.prevallet@hotmail.com>"
-copyright = "2025, Craig Prevallet <craig.prevallet@hotmail.com>"
+copyright = "2026, Craig Prevallet <craig.prevallet@hotmail.com>"
 depends = "$auto"
 section = "utility"
 priority = "optional"
