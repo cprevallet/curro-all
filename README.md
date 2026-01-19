@@ -16,3 +16,10 @@ that stores files in the Fit Format.
 
 # About the name
 Curro is Latin for "I Run"
+
+# Notes
+Most Garmin watches and several other brands support the FIT format.
+
+For viewing detailed information of a single Fit file try Curro-One:
+http://github.com/cprevallet/curro-one
+
